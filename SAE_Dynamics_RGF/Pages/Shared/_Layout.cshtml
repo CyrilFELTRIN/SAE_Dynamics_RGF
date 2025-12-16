@@ -37,10 +37,10 @@
 
     <style>
         :root {
-            --primary-color: #7c3aed;
-            --primary-hover: #6d28d9;   
-            --secondary-color: #4c1d95;
-            --accent-color: #a78bfa;
+            --primary-color: #8b5cf6;    /* Violet-500 */
+            --primary-hover: #7c3aed;    /* Violet-600 */
+            --secondary-color: #6b21a8;  /* Violet-900 */
+            --accent-color: #a78bfa;     /* Violet-400 */
             --light-bg: #f8fafc;
             --dark-bg: #0f172a;
             --text-primary: #1e293b;
@@ -52,7 +52,6 @@
             --box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             --transition: all 0.3s ease;
         }
-
         [data-bs-theme="dark"] {
             --light-bg: #1e293b;
             --dark-bg: #f8fafc;
@@ -80,7 +79,7 @@
 
         /* Header & Navigation */
         .navbar {
-            background: linear-gradient(135deg, var(--primary-color), #6d28d9);
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             padding: 0.5rem 0;
         }
@@ -127,9 +126,33 @@
             gap: 0.5rem;
         }
 
-        .navbar-brand img {
+        .rolix-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+            line-height: 1;
+        }
+
+        .rolix-brand img {
+            display: block;
             height: 40px;
             width: auto;
+        }
+
+        .rolix-brand .rolix-brand-word {
+            height: 26px;
+        }
+
+        .navbar-toggler {
+            border-color: rgba(255, 255, 255, 0.35);
+        }
+
+        .navbar-toggler:focus {
+            box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.18);
+        }
+
+        .navbar-toggler-icon {
+            filter: brightness(0) invert(1);
         }
 
         .nav-link {
@@ -185,11 +208,12 @@
         main {
             flex: 1;
             padding: 2rem 0;
+            min-height: 100vh;
         }
 
         /* Footer */
         footer {
-            background-color: #2d3748;
+            background: linear-gradient(135deg, #0b1020, #1b1033);
             color: #e9ecef;
             padding: 3rem 0 1.5rem;
             margin-top: auto;
@@ -346,13 +370,13 @@
             bottom: 0;
             left: 0;
             right: 0;
-            background-color: var(--dark-bg);
+            background-color: var(--light-bg);
             color: var(--text-primary);
             padding: 1rem 2rem;
             box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
             z-index: 1050;
             display: none;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(148, 163, 184, 0.35);
         }
 
         #cookie-banner.show {
@@ -370,12 +394,13 @@
         }
 
         #cookie-banner a {
-            color: var(--accent-color);
+            color: var(--primary-color);
             text-decoration: none;
         }
 
         #cookie-banner button {
-                background-color: #ffdd57;
+                background-color: var(--primary-color);
+                color: #fff;
                 border: none;
                 padding: 5px 15px;
                 border-radius: 5px;
@@ -388,7 +413,10 @@
         <nav class="navbar navbar-expand-lg">
             <div class="container">
                 <a class="navbar-brand" asp-area="" asp-page="/Index">
-                    <i class="fas fa-clock me-2"></i>ROLIX
+                    <span class="rolix-brand">
+                        <img src="~/images/logo_blanc_couronne-rbg.png" alt="Rolix" class="rolix-brand-crown" />
+                        <img src="~/images/logo_blanc_rolix-rbg.png" alt="Rolix" class="rolix-brand-word" />
+                    </span>
                 </a>
                 
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" 
@@ -453,7 +481,7 @@
                                 <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle" id="userDropdown" 
                                    data-bs-toggle="dropdown" aria-expanded="false">
                                     <div class="me-2 d-none d-md-block">
-                                        <div class="fw-semibold">@username</div>
+                                        <div class="fw-semibold user-name">@username</div>
                                         <div class="small text-white-50" data-lang-fr="Compte" data-lang-en="Account">Compte</div>
                                     </div>
                                     <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
@@ -494,15 +522,54 @@
                             </a>
                         }
 
-                        <button id="theme-toggle" class="btn btn-link text-white theme-toggle" title="Toggle theme">
-                            <i class="fas fa-moon"></i>
-                            <i class="fas fa-sun d-none"></i>
-                        </button>
+                        <div class="theme-wrapper" title="Toggle theme">
+                            <input type="checkbox" id="theme-toggle" class="toggle-checkbox">
+                            <label for="theme-toggle" class="theme-label">
+                                <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                                </svg>
 
-                        <button id="lang-toggle" class="btn btn-sm btn-outline-light ms-2" data-lang="fr">
-                            <span class="d-none d-md-inline" data-lang-fr="FR" data-lang-en="EN">FR</span>
-                            <i class="fas fa-globe d-md-none"></i>
-                        </button>
+                                <div class="theme-ball"></div>
+
+                                <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+                                    <circle cx="12" cy="12" r="5"></circle>
+                                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                                </svg>
+                            </label>
+                        </div>
+
+                        <div class="nav-toggles">
+                            <div class="toggle-wrapper" title="Language">
+                                <input type="checkbox" id="lang-toggle" class="toggle-checkbox">
+                                <label for="lang-toggle" class="toggle-label">
+                                    <div class="toggle-ball">
+                                        <div class="text-mask">
+                                            <span class="fr">FR</span>
+                                            <span class="en">EN</span>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="toggle-wrapper" title="Currency">
+                                <input type="checkbox" id="currency-toggle" class="toggle-checkbox">
+                                <label for="currency-toggle" class="toggle-label">
+                                    <div class="toggle-ball">
+                                        <div class="text-mask">
+                                            <span class="fr">EUR</span>
+                                            <span class="en">CHF</span>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -535,7 +602,10 @@
             <div class="row">
                 <div class="col-lg-4 mb-4 mb-lg-0">
                     <h5 class="mb-3">
-                        <i class="fas fa-clock me-2"></i>ROLIX
+                        <span class="rolix-brand">
+                            <img src="~/images/logo_blanc_couronne-rbg.png" alt="Rolix" class="rolix-brand-crown" />
+                            <img src="~/images/logo_blanc_rolix-rbg.png" alt="Rolix" class="rolix-brand-word" />
+                        </span>
                     </h5>
                     <p class="text-muted" data-lang-fr="Solutions innovantes pour votre entreprise" 
                        data-lang-en="Innovative solutions for your business">
@@ -599,15 +669,19 @@
     </footer>
 
     <!-- Cookie Consent Banner -->
+    <!--
     <div id="cookie-banner" class="show">
-        <p data-lang-fr="Nous utilisons des cookies pour améliorer votre expérience. En continuant à naviguer, vous acceptez notre <a href=\"/privacy\">Politique de confidentialité</a>." 
-           data-lang-en="We use cookies to improve your experience. By continuing to browse, you accept our <a href=\"/privacy\">Privacy Policy</a>.">
-            Nous utilisons des cookies pour améliorer votre expérience. En continuant à naviguer, vous acceptez notre <a href="/privacy">Politique de confidentialité</a>.
-        </p>
+        <div>
+            <p data-lang-fr="Nous utilisons des cookies pour améliorer votre expérience. En continuant à naviguer, vous acceptez notre" 
+               data-lang-en="We use cookies to improve your experience. By continuing to browse, you accept our">Nous utilisons des cookies pour améliorer votre expérience. En continuant à naviguer, vous acceptez notre </p><a href="/privacy"><p data-lang-fr="Politique de confidentialité" data-lang-en="Privacy Policy">Politique de confidentialité</p></a>.
+        </div>
+
+
         <button onclick="acceptCookies()" class="btn btn-sm btn-primary" data-lang-fr="Accepter" data-lang-en="Accept">
             <i class="fas fa-check me-1"></i> <span data-lang-fr="Accepter" data-lang-en="Accept">Accepter</span>
         </button>
     </div>
+    -->
 
     <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -618,29 +692,25 @@
         // Gestion du thème clair/sombre
         const themeToggle = document.getElementById('theme-toggle');
         const html = document.documentElement;
-        const themeIcon = themeToggle ? themeToggle.querySelector('i:not(.d-none)') : null;
-        const otherThemeIcon = themeToggle ? themeToggle.querySelector('i.d-none') : null;
         
         // Vérifier le thème stocké ou utiliser les préférences du système
         const savedTheme = localStorage.getItem('theme') || 
                           (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         
-        // Appliquer le thème sauvegardé
-        if (savedTheme === 'dark' && themeToggle) {
-            html.setAttribute('data-bs-theme', 'dark');
-            if (themeIcon) themeIcon.classList.add('d-none');
-            if (otherThemeIcon) otherThemeIcon.classList.remove('d-none');
+        function applyTheme(nextTheme) {
+            const t = nextTheme === 'dark' ? 'dark' : 'light';
+            html.setAttribute('data-bs-theme', t);
+            document.body.classList.toggle('dark-mode', t === 'dark');
+            localStorage.setItem('theme', t);
+            if (themeToggle) themeToggle.checked = t === 'dark';
         }
+
+        applyTheme(savedTheme);
 
         // Basculer entre les thèmes
         if (themeToggle) {
-            themeToggle.addEventListener('click', () => {
-                const isDark = html.getAttribute('data-bs-theme') === 'dark';
-                const newTheme = isDark ? 'light' : 'dark';
-                html.setAttribute('data-bs-theme', newTheme);
-                localStorage.setItem('theme', newTheme);
-                if (themeIcon) themeIcon.classList.toggle('d-none');
-                if (otherThemeIcon) otherThemeIcon.classList.toggle('d-none');
+            themeToggle.addEventListener('change', () => {
+                applyTheme(themeToggle.checked ? 'dark' : 'light');
             });
         }
 
@@ -676,12 +746,8 @@
                 }
             });
             
-            // Mettre à jour le texte du bouton de langue
             if (langToggle) {
-                const langText = langToggle.querySelector('span');
-                if (langText) {
-                    langText.textContent = currentLang.toUpperCase();
-                }
+                langToggle.checked = currentLang === 'en';
             }
             
             // Mettre à jour l'attribut lang de l'élément html
@@ -693,9 +759,8 @@
 
         // Basculer entre les langues
         if (langToggle) {
-            langToggle.addEventListener('click', (e) => {
-                e.preventDefault();
-                currentLang = currentLang === 'fr' ? 'en' : 'fr';
+            langToggle.addEventListener('change', () => {
+                currentLang = langToggle.checked ? 'en' : 'fr';
                 updateLanguage();
             });
         }

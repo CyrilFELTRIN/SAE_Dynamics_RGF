@@ -11,6 +11,7 @@ namespace SAE_Dynamics_RGF.Data
     public class DataverseService : IDisposable
     {
         private readonly ServiceClient _serviceClient;
+        private readonly Dictionary<Guid, string> _currencyCodeCache = new();
 
         private const string DataverseUrl = "https://butinfofeltrincyrilsandbox.crm12.dynamics.com/";
         private const string DataverseAppId = "51f81489-12ee-4a9e-aaae-a2591f45987d";
@@ -93,6 +94,106 @@ namespace SAE_Dynamics_RGF.Data
             }
         }
 
+        private string NormalizeCurrencyCode(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return null;
+
+            var v = raw.Trim();
+
+            if (v.Equals("EUR", StringComparison.OrdinalIgnoreCase)) return "EUR";
+            if (v.Equals("CHF", StringComparison.OrdinalIgnoreCase)) return "CHF";
+
+            if (v.Contains("EUR", StringComparison.OrdinalIgnoreCase) || v.Contains("Euro", StringComparison.OrdinalIgnoreCase)) return "EUR";
+            if (v.Contains("CHF", StringComparison.OrdinalIgnoreCase) || v.Contains("Franc", StringComparison.OrdinalIgnoreCase)) return "CHF";
+
+            return null;
+        }
+
+        private string GetIsoCurrencyCode(Guid currencyId)
+        {
+            if (currencyId == Guid.Empty) return null;
+            if (!IsConnected) return null;
+
+            if (_currencyCodeCache.TryGetValue(currencyId, out var cached))
+            {
+                return cached;
+            }
+
+            try
+            {
+                var entity = _serviceClient.Retrieve("transactioncurrency", currencyId, new ColumnSet("isocurrencycode"));
+                var iso = entity?.GetAttributeValue<string>("isocurrencycode");
+                iso = NormalizeCurrencyCode(iso) ?? iso;
+                _currencyCodeCache[currencyId] = iso;
+                return iso;
+            }
+            catch
+            {
+                _currencyCodeCache[currencyId] = null;
+                return null;
+            }
+        }
+
+        private void PopulatePricesForProducts(List<Product> products)
+        {
+            if (!IsConnected) return;
+            if (products == null || products.Count == 0) return;
+
+            var byId = products
+                .Where(p => p != null && p.Id != Guid.Empty)
+                .GroupBy(p => p.Id)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            if (byId.Count == 0) return;
+
+            try
+            {
+                var query = new QueryExpression("productpricelevel")
+                {
+                    ColumnSet = new ColumnSet("amount", "transactioncurrencyid", "pricelevelid", "productid")
+                };
+
+                var result = _serviceClient.RetrieveMultiple(query);
+                foreach (var entity in result.Entities)
+                {
+                    var productRef = entity.GetAttributeValue<EntityReference>("productid");
+                    if (productRef == null || productRef.Id == Guid.Empty) continue;
+                    if (!byId.TryGetValue(productRef.Id, out var product)) continue;
+
+                    var amount = entity.GetAttributeValue<Money>("amount")?.Value;
+                    if (amount == null) continue;
+
+                    string currencyCode = null;
+
+                    var currencyRef = entity.GetAttributeValue<EntityReference>("transactioncurrencyid");
+                    if (currencyRef != null)
+                    {
+                        currencyCode = GetIsoCurrencyCode(currencyRef.Id);
+                        currencyCode = NormalizeCurrencyCode(currencyCode) ?? NormalizeCurrencyCode(currencyRef.Name) ?? currencyCode;
+                    }
+
+                    if (currencyCode == null)
+                    {
+                        var priceLevelRef = entity.GetAttributeValue<EntityReference>("pricelevelid");
+                        currencyCode = NormalizeCurrencyCode(priceLevelRef?.Name);
+                    }
+
+                    if (currencyCode == "EUR")
+                    {
+                        product.PriceEur ??= amount.Value;
+                    }
+                    else if (currencyCode == "CHF")
+                    {
+                        product.PriceChf ??= amount.Value;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(" Erreur Dataverse (PopulatePricesForProducts) : " + ex.Message);
+            }
+        }
+
         public List<Product> GetProducts()
         {
             var products = new List<Product>();
@@ -102,7 +203,7 @@ namespace SAE_Dynamics_RGF.Data
             {
                 var query = new QueryExpression("product")
                 {
-                    ColumnSet = new ColumnSet("name", "productnumber", "parentproductid", "crda6_image", "statecode", "crda6_nouveaute"),
+                    ColumnSet = new ColumnSet("name", "productnumber", "parentproductid", "crda6_image", "statecode", "crda6_nouveaute", "crda6_misalaune"),
                     Criteria = new FilterExpression
                     {
                         Conditions =
@@ -123,11 +224,13 @@ namespace SAE_Dynamics_RGF.Data
 
                     var product = new Product
                     {
+                        Id = entity.Id,
                         Name = entity.GetAttributeValue<string>("name") ?? "Sans nom",
                         ProductNumber = entity.GetAttributeValue<string>("productnumber") ?? "N/A",
                         Category = parentRef.Name ?? "Sans parent",
                         ImageUrl = "/images/no-image.jpg",
-                        IsNew = entity.GetAttributeValue<bool?>("crda6_nouveaute") == true
+                        IsNew = entity.GetAttributeValue<bool?>("crda6_nouveaute") == true,
+                        IsFeatured = entity.GetAttributeValue<bool?>("crda6_misalaune") == true
                     };
 
                     if (entity.Contains("crda6_image"))
@@ -142,10 +245,75 @@ namespace SAE_Dynamics_RGF.Data
 
                     products.Add(product);
                 }
+
+                PopulatePricesForProducts(products);
             }
             catch (Exception ex)
             {
                 Console.WriteLine(" Erreur Dataverse (GetProducts) : " + ex.Message);
+                if (ex.InnerException != null)
+                    Console.WriteLine(" Détail : " + ex.InnerException.Message);
+            }
+
+            return products;
+        }
+
+        public List<Product> GetFeaturedProducts()
+        {
+            var products = new List<Product>();
+            if (!IsConnected) return products;
+
+            try
+            {
+                var query = new QueryExpression("product")
+                {
+                    ColumnSet = new ColumnSet("name", "productnumber", "parentproductid", "crda6_image", "statecode", "crda6_nouveaute", "crda6_misalaune"),
+                    Criteria = new FilterExpression
+                    {
+                        Conditions =
+                        {
+                            new ConditionExpression("statecode", ConditionOperator.Equal, 0),
+                            new ConditionExpression("crda6_misalaune", ConditionOperator.Equal, true),
+                            new ConditionExpression("parentproductid", ConditionOperator.NotNull)
+                        }
+                    }
+                };
+
+                var result = _serviceClient.RetrieveMultiple(query);
+                foreach (var entity in result.Entities)
+                {
+                    var parentRef = entity.GetAttributeValue<EntityReference>("parentproductid");
+                    if (parentRef == null) continue;
+
+                    var product = new Product
+                    {
+                        Id = entity.Id,
+                        Name = entity.GetAttributeValue<string>("name") ?? "Sans nom",
+                        ProductNumber = entity.GetAttributeValue<string>("productnumber") ?? "N/A",
+                        Category = parentRef.Name ?? "Sans parent",
+                        ImageUrl = "/images/no-image.jpg",
+                        IsNew = entity.GetAttributeValue<bool?>("crda6_nouveaute") == true,
+                        IsFeatured = true
+                    };
+
+                    if (entity.Contains("crda6_image"))
+                    {
+                        var imageBytes = GetFullImageBytes("product", entity.Id, "crda6_image");
+                        if (imageBytes != null && imageBytes.Length > 0)
+                        {
+                            string base64Image = Convert.ToBase64String(imageBytes);
+                            product.ImageUrl = $"data:image/png;base64,{base64Image}";
+                        }
+                    }
+
+                    products.Add(product);
+                }
+
+                PopulatePricesForProducts(products);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(" Erreur Dataverse (GetFeaturedProducts) : " + ex.Message);
                 if (ex.InnerException != null)
                     Console.WriteLine(" Détail : " + ex.InnerException.Message);
             }
@@ -162,7 +330,7 @@ namespace SAE_Dynamics_RGF.Data
             {
                 var query = new QueryExpression("product")
                 {
-                    ColumnSet = new ColumnSet("name", "productnumber", "crda6_image", "statecode", "crda6_nouveaute"),
+                    ColumnSet = new ColumnSet("name", "productnumber", "crda6_image", "statecode", "crda6_nouveaute", "crda6_misalaune"),
                     Criteria = new FilterExpression
                     {
                         Conditions =
@@ -179,11 +347,13 @@ namespace SAE_Dynamics_RGF.Data
                 {
                     var product = new Product
                     {
+                        Id = entity.Id,
                         Name = entity.GetAttributeValue<string>("name") ?? "Sans nom",
                         ProductNumber = entity.GetAttributeValue<string>("productnumber") ?? "N/A",
                         Category = "Sans parent",
                         ImageUrl = "/images/no-image.jpg",
-                        IsNew = entity.GetAttributeValue<bool?>("crda6_nouveaute") == true
+                        IsNew = entity.GetAttributeValue<bool?>("crda6_nouveaute") == true,
+                        IsFeatured = entity.GetAttributeValue<bool?>("crda6_misalaune") == true
                     };
 
                     if (entity.Contains("crda6_image"))
@@ -198,6 +368,8 @@ namespace SAE_Dynamics_RGF.Data
 
                     parents.Add(product);
                 }
+
+                PopulatePricesForProducts(parents);
             }
             catch (Exception ex)
             {
@@ -216,7 +388,7 @@ namespace SAE_Dynamics_RGF.Data
             {
                 var query = new QueryExpression("product")
                 {
-                    ColumnSet = new ColumnSet("name", "productnumber", "parentproductid", "crda6_image", "statecode", "crda6_nouveaute"),
+                    ColumnSet = new ColumnSet("name", "productnumber", "parentproductid", "crda6_image", "statecode", "crda6_nouveaute", "crda6_misalaune"),
                     Criteria = new FilterExpression
                     {
                         Conditions =
@@ -235,11 +407,13 @@ namespace SAE_Dynamics_RGF.Data
 
                     var product = new Product
                     {
+                        Id = entity.Id,
                         Name = entity.GetAttributeValue<string>("name") ?? "Sans nom",
                         ProductNumber = entity.GetAttributeValue<string>("productnumber") ?? "N/A",
                         Category = parentRef?.Name ?? "Sans parent",
                         ImageUrl = "/images/no-image.jpg",
-                        IsNew = true
+                        IsNew = true,
+                        IsFeatured = entity.GetAttributeValue<bool?>("crda6_misalaune") == true
                     };
 
                     if (entity.Contains("crda6_image"))
@@ -254,6 +428,8 @@ namespace SAE_Dynamics_RGF.Data
 
                     products.Add(product);
                 }
+
+                PopulatePricesForProducts(products);
             }
             catch (Exception ex)
             {
@@ -274,7 +450,7 @@ namespace SAE_Dynamics_RGF.Data
             {
                 var query = new QueryExpression("quote")
                 {
-                    ColumnSet = new ColumnSet("name", "pricelevelid", "customerid", "statecode", "totalamount", "quotenumber", "createdon")
+                    ColumnSet = new ColumnSet("name", "pricelevelid", "customerid", "statecode", "statuscode", "totalamount", "quotenumber", "createdon")
                 };
 
                 var result = _serviceClient.RetrieveMultiple(query);
@@ -297,6 +473,7 @@ namespace SAE_Dynamics_RGF.Data
                         StateCode = entity.Contains("statecode")
                             ? entity.FormattedValues["statecode"]
                             : "Inconnu",
+                        StatusCode = entity.GetAttributeValue<OptionSetValue>("statuscode")?.Value,
                         CreatedOn = entity.Contains("createdon")
                             ? entity.GetAttributeValue<DateTime>("createdon")
                             : DateTime.MinValue
@@ -346,7 +523,7 @@ namespace SAE_Dynamics_RGF.Data
 
                 var query = new QueryExpression("quote")
                 {
-                    ColumnSet = new ColumnSet("name", "pricelevelid", "customerid", "statecode", "totalamount", "quotenumber", "createdon"),
+                    ColumnSet = new ColumnSet("name", "pricelevelid", "customerid", "statecode", "statuscode", "totalamount", "quotenumber", "createdon"),
                     Criteria = new FilterExpression
                     {
                         Conditions =
@@ -376,6 +553,7 @@ namespace SAE_Dynamics_RGF.Data
                         StateCode = entity.Contains("statecode")
                             ? entity.FormattedValues["statecode"]
                             : "Inconnu",
+                        StatusCode = entity.GetAttributeValue<OptionSetValue>("statuscode")?.Value,
                         CreatedOn = entity.Contains("createdon")
                             ? entity.GetAttributeValue<DateTime>("createdon")
                             : DateTime.MinValue
@@ -427,7 +605,7 @@ namespace SAE_Dynamics_RGF.Data
                 // Requête pour les commandes
                 var query = new QueryExpression("salesorder")
                 {
-                    ColumnSet = new ColumnSet("name", "ordernumber", "customerid", "pricelevelid", "statecode", "totalamount", "createdon"),
+                    ColumnSet = new ColumnSet("name", "ordernumber", "customerid", "pricelevelid", "statecode", "statuscode", "totalamount", "createdon"),
                     Criteria = new FilterExpression
                     {
                         Conditions =
@@ -454,6 +632,7 @@ namespace SAE_Dynamics_RGF.Data
                         StateCode = entity.Contains("statecode")
                             ? entity.FormattedValues["statecode"]
                             : "Inconnu",
+                        StatusCode = entity.GetAttributeValue<OptionSetValue>("statuscode")?.Value,
                         TotalAmount = entity.Contains("totalamount")
                             ? entity.GetAttributeValue<Money>("totalamount").Value
                             : 0m,
@@ -482,7 +661,7 @@ namespace SAE_Dynamics_RGF.Data
             {
                 var query = new QueryExpression("salesorder")
                 {
-                    ColumnSet = new ColumnSet("name", "ordernumber", "customerid", "pricelevelid", "statecode", "totalamount", "createdon")
+                    ColumnSet = new ColumnSet("name", "ordernumber", "customerid", "pricelevelid", "statecode", "statuscode", "totalamount", "createdon")
                 };
 
                 var result = _serviceClient.RetrieveMultiple(query);
@@ -502,6 +681,7 @@ namespace SAE_Dynamics_RGF.Data
                         StateCode = entity.Contains("statecode")
                             ? entity.FormattedValues["statecode"]
                             : "Inconnu",
+                        StatusCode = entity.GetAttributeValue<OptionSetValue>("statuscode")?.Value,
                         TotalAmount = entity.Contains("totalamount")
                             ? entity.GetAttributeValue<Money>("totalamount").Value
                             : 0m,
@@ -568,11 +748,15 @@ namespace SAE_Dynamics_RGF.Data
 
         public class Product
         {
+            public Guid Id { get; set; }
             public string Name { get; set; }
             public string ProductNumber { get; set; }
             public string Category { get; set; }
             public string ImageUrl { get; set; }
             public bool IsNew { get; set; }
+            public bool IsFeatured { get; set; }
+            public decimal? PriceEur { get; set; }
+            public decimal? PriceChf { get; set; }
         }
 
         public class Contact
@@ -589,6 +773,7 @@ namespace SAE_Dynamics_RGF.Data
             public string CustomerId { get; set; }
             public string PriceLevelId { get; set; }
             public string StateCode { get; set; }
+            public int? StatusCode { get; set; }
             public decimal TotalAmount { get; set; }
             public DateTime CreatedOn { get; set; }
         }
@@ -600,6 +785,7 @@ namespace SAE_Dynamics_RGF.Data
             public string CustomerId { get; set; }
             public string PriceLevelId { get; set; }
             public string StateCode { get; set; }
+            public int? StatusCode { get; set; }
             public decimal TotalAmount { get; set; }
             public DateTime CreatedOn { get; set; }
         }

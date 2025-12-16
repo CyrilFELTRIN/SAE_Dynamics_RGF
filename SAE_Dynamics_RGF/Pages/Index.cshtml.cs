@@ -10,6 +10,7 @@ namespace SAE_Dynamics_RGF.Pages
         private readonly ILogger<IndexModel> _logger;
         private readonly DataverseService _dataverseService;
 
+        public List<DataverseService.Product> FeaturedProducts { get; set; } = new();
         public List<DataverseService.Product> NewProducts { get; set; } = new();
 
         public IndexModel(ILogger<IndexModel> logger, DataverseService dataverseService)
@@ -20,6 +21,7 @@ namespace SAE_Dynamics_RGF.Pages
 
         public void OnGet()
         {
+            FeaturedProducts = _dataverseService.GetFeaturedProducts();
             NewProducts = _dataverseService.GetNewProducts();
         }
     }

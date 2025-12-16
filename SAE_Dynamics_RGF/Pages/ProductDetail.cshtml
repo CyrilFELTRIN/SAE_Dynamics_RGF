@@ -54,6 +54,7 @@
                             </span>
                             <h1 class="display-6 fw-bold mb-1">@Model.Product.Name</h1>
                             <div class="text-muted" data-lang-fr="Informations issues de Dataverse" data-lang-en="Information from Dataverse">Informations issues de Dataverse</div>
+                            <div class="mt-2 h5 fw-bold product-price" data-price-eur="@(Model.Product.PriceEur?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "")" data-price-chf="@(Model.Product.PriceChf?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "")" style="display:none;"></div>
                         </div>
                         <a href="/Products" class="btn btn-outline-primary d-none d-sm-inline-flex align-items-center">
                             <i class="fas fa-arrow-left me-2"></i>

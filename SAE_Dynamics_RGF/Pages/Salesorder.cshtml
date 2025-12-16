@@ -1,45 +1,243 @@
 ﻿@page
 @model SAE_Dynamics_RGF.Pages.SalesOrdersModel
 @{
-    ViewData["Title"] = "Mes commandes";
+    ViewData["Title"] = "Liste des commandes";
 }
 
-<h2 data-lang-fr="Mes commandes" data-lang-en="My orders">@ViewData["Title"]</h2>
-@if (!Model.HasOrders)
-{
-    <div class="alert alert-info mt-4">
-        <i class="bi bi-info-circle"></i> Vous n'avez pas encore de commande.
+<div data-rolix-scope>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0" data-lang-fr="Mes commandes" data-lang-en="My orders">@ViewData["Title"]</h2>
+        <div>
+            <button class="btn btn-primary" data-lang-fr="Nouvelle commande" data-lang-en="New order">
+                <i class="fas fa-plus me-2"></i>
+                <span data-lang-fr="Nouvelle commande" data-lang-en="New order">Nouvelle commande</span>
+            </button>
+        </div>
     </div>
-}
-else
-{
-    <div class="table-responsive mt-4">
-        <table class="table table-bordered table-striped text-center align-middle">
-            <thead class="table-light">
-                <tr>
-                    <th data-lang-fr="Numéro" data-lang-en="Number">Numéro</th>
-                    <th data-lang-fr="Nom" data-lang-en="Name">Nom</th>
-                    <th data-lang-fr="Date" data-lang-en="Date">Date</th>
-                    <th data-lang-fr="Montant (€)" data-lang-en="Amount (€)">Montant (€)</th>
-                    <th data-lang-fr="Client" data-lang-en="Customer">Client</th>
-                    <th data-lang-fr="Liste de prix" data-lang-en="Price List">Liste de prix</th>
-                    <th data-lang-fr="Statut" data-lang-en="Status">Statut</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var order in Model.SalesOrders)
-                {
-                    <tr>
-                        <td>@order.OrderNumber</td>
-                        <td>@order.Name</td>
-                        <td>@order.CreatedOn.ToString("dd/MM/yyyy")</td>
-                        <td>@order.TotalAmount.ToString("F2")</td>
-                        <td>@order.CustomerId</td>
-                        <td>@order.PriceLevelId</td>
-                        <td>@order.StateCode</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-}
+
+    @if (!Model.HasOrders)
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <div class="text-muted mb-3">
+                    <i class="fas fa-shopping-cart fa-3x mb-3"></i>
+                    <h4 class="h5" data-lang-fr="Aucune commande trouvée" data-lang-en="No orders found">Aucune commande trouvée</h4>
+                    <p class="mb-0" data-lang-fr="Commencez par créer votre première commande" data-lang-en="Start by creating your first order">
+                        Commencez par créer votre première commande
+                    </p>
+                </div>
+                <a href="#" class="btn btn-primary mt-3" data-lang-fr="Créer une commande" data-lang-en="Create an order">
+                    <i class="fas fa-plus me-2"></i>
+                    <span data-lang-fr="Créer une commande" data-lang-en="Create an order">Créer une commande</span>
+                </a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-header border-bottom">
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-6">
+                        <div class="input-group rounded-3">
+                            <span class="input-group-text bg-transparent border-end-0"><i class="fas fa-search text-muted"></i></span>
+                            <input type="text" class="form-control border-start-0 bg-transparent" placeholder="Rechercher une commande..." data-lang-fr-placeholder="Rechercher une commande..." data-lang-en-placeholder="Search an order..." data-rolix-search-for="rolix-orders-table">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" data-rolix-filter-for="rolix-orders-table">
+                            <option value="all" data-lang-fr="Tous les statuts" data-lang-en="All statuses">Tous les statuts</option>
+                            <option value="active" data-lang-fr="Actif" data-lang-en="Active">Actif</option>
+                            <option value="sent" data-lang-fr="Envoyée" data-lang-en="Sent">Envoyée</option>
+                            <option value="cancelled" data-lang-fr="Annulée" data-lang-en="Cancelled">Annulée</option>
+                            <option value="executed" data-lang-fr="Exécutée" data-lang-en="Executed">Exécutée</option>
+                            <option value="invoiced" data-lang-fr="Facturée" data-lang-en="Invoiced">Facturée</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center justify-content-end">
+                            <button class="btn btn-outline-secondary me-2" type="button">
+                                <i class="fas fa-filter"></i>
+                                <span class="d-none d-md-inline ms-1" data-lang-fr="Filtres" data-lang-en="Filters">Filtres</span>
+                            </button>
+                            <button class="btn btn-outline-secondary" type="button">
+                                <i class="fas fa-download"></i>
+                                <span class="d-none d-md-inline ms-1" data-lang-fr="Exporter" data-lang-en="Export">Exporter</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table id="rolix-orders-table" class="table table-hover align-middle mb-0" data-rolix-table data-rolix-page-size="10">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="px-4" data-lang-fr="N° COMMANDE" data-lang-en="ORDER #">N° COMMANDE</th>
+                                <th data-lang-fr="CLIENT" data-lang-en="CUSTOMER">CLIENT</th>
+                                <th class="text-center" data-lang-fr="DATE" data-lang-en="DATE">DATE</th>
+                                <th class="text-end pe-4" data-lang-fr="MONTANT" data-lang-en="AMOUNT">MONTANT</th>
+                                <th class="text-center" data-lang-fr="STATUT" data-lang-en="STATUS">STATUT</th>
+                                <th class="text-end pe-4" data-rolix-nosort></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in Model.SalesOrders)
+                            {
+                                var statusKey = "pending";
+                                var statusText = order.StateCode;
+                                var badgeKey = "pending";
+
+                                switch (order.StatusCode)
+                                {
+                                    case 0: // Actif
+                                        statusKey = "active";
+                                        badgeKey = "active";
+                                        statusText = "Actif";
+                                        break;
+                                    case 1: // Envoyée
+                                        statusKey = "sent";
+                                        badgeKey = "active";
+                                        statusText = "Envoyée";
+                                        break;
+                                    case 2: // Annulé(e)
+                                        statusKey = "cancelled";
+                                        badgeKey = "cancelled";
+                                        statusText = "Annulée";
+                                        break;
+                                    case 3: // Exécuté(e)
+                                        statusKey = "executed";
+                                        badgeKey = "completed";
+                                        statusText = "Exécutée";
+                                        break;
+                                    case 4: // Facturé
+                                        statusKey = "invoiced";
+                                        badgeKey = "completed";
+                                        statusText = "Facturée";
+                                        break;
+                                    default:
+                                        statusKey = "pending";
+                                        badgeKey = "pending";
+                                        statusText = "En attente";
+                                        break;
+                                }
+                                <tr data-status="@statusKey">
+                                    <td class="px-4 fw-semibold">
+                                        <a href="#" class="text-decoration-none">#@order.OrderNumber</a>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-shrink-0 me-3">
+                                                <div class="avatar-sm bg-soft-primary rounded-circle d-flex align-items-center justify-content-center">
+                                                    <i class="fas fa-building text-primary"></i>
+                                                </div>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-0">@order.CustomerId</h6>
+                                                <small class="text-muted">@order.PriceLevelId</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center" data-sort="@order.CreatedOn.ToString("yyyy-MM-dd")">@order.CreatedOn.ToString("dd/MM/yyyy")</td>
+                                    <td class="text-end pe-4 fw-bold" data-sort="@order.TotalAmount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)">@order.TotalAmount.ToString("N2") €</td>
+                                    <td class="text-center">
+                                        @{
+                                            var statusClass = "status-pending";
+                                            if (badgeKey == "active") statusClass = "status-active";
+                                            else if (badgeKey == "completed") statusClass = "status-completed";
+                                            else if (badgeKey == "cancelled") statusClass = "status-cancelled";
+                                        }
+                                        <span class="status-badge @statusClass">@statusText</span>
+                                    </td>
+                                    <td class="text-end pe-4">
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-link text-muted" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li><a class="dropdown-item" href="#" data-lang-fr="Voir les détails" data-lang-en="View details">Voir les détails</a></li>
+                                                <li><a class="dropdown-item" href="#" data-lang-fr="Télécharger la facture" data-lang-en="Download invoice">Télécharger la facture</a></li>
+                                                <li><a class="dropdown-item text-danger" href="#" data-lang-fr="Annuler la commande" data-lang-en="Cancel order">Annuler la commande</a></li>
+                                            </ul>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="d-flex justify-content-between align-items-center p-4 border-top" data-rolix-pagination-wrapper-for="rolix-orders-table">
+                    <div class="text-muted" data-rolix-info-for="rolix-orders-table"></div>
+                    <nav aria-label="Pagination" data-rolix-pagination-for="rolix-orders-table"></nav>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Styles spécifiques pour cette page -->
+<style>
+    .avatar-sm {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .bg-soft-primary {
+        background-color: rgba(139, 92, 246, 0.1) !important;
+    }
+    
+    .dropdown-menu {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        border: none;
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+    }
+    
+    .dropdown-item {
+        padding: 0.5rem 1rem;
+        border-radius: 0.35rem;
+        font-size: 0.85rem;
+    }
+    
+    .table > :not(caption) > * > * {
+        padding: 1rem 0.5rem;
+    }
+    
+    .form-select, .form-control {
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        background-color: var(--card-bg);
+        color: var(--text-color);
+        transition: all 0.2s ease;
+    }
+    
+    .form-select:focus, .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.25);
+    }
+    
+    .input-group {
+        background-color: var(--card-bg);
+        border-radius: 0.5rem;
+        border: 1px solid var(--border-color);
+        transition: all 0.2s ease;
+    }
+    
+    .input-group:focus-within {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.25);
+    }
+    
+    .input-group-text {
+        background-color: transparent;
+        border: none;
+        color: var(--text-muted);
+    }
+
+</style>

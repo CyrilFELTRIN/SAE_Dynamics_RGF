@@ -36,46 +36,24 @@
                         <i class="fas fa-arrow-down me-2"></i>Nos engagements
                     </a>
                 </div>
-                <div class="d-flex align-items-center mt-4">
-                    <div class="avatar-group me-3">
-                        <img src="https://randomuser.me/api/portraits/women/32.jpg" class="avatar" alt="Client 1">
-                        <img src="https://randomuser.me/api/portraits/men/42.jpg" class="avatar" alt="Client 2">
-                        <img src="https://randomuser.me/api/portraits/women/68.jpg" class="avatar" alt="Client 3">
-                    </div>
-                    <div>
-                        <p class="mb-0 small text-muted"
-                           data-lang-fr="Déjà adoptée par des passionnés d'horlogerie"
-                           data-lang-en="Trusted by watch enthusiasts">
-                            Déjà adoptée par des passionnés d'horlogerie
-                        </p>
-                        <div class="text-warning">
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star"></i>
-                            <i class="fas fa-star-half-alt"></i>
-                            <span class="text-muted ms-1">4.8/5</span>
-                        </div>
-                    </div>
-                </div>
             </div>
             <div class="col-lg-6">
                 <div class="position-relative">
                     <div class="position-relative z-2 rounded-4 overflow-hidden shadow-lg">
-                        @if (Model.NewProducts != null && Model.NewProducts.Any())
+                        @if (Model.FeaturedProducts != null && Model.FeaturedProducts.Any())
                         {
-                            <div id="newProductsCarousel" class="carousel slide rolix-carousel" data-bs-ride="carousel" data-bs-interval="4500">
+                            <div id="featuredProductsCarousel" class="carousel slide rolix-carousel" data-bs-ride="carousel" data-bs-interval="4500">
                                 <div class="carousel-indicators">
-                                    @for (var i = 0; i < Model.NewProducts.Count; i++)
+                                    @for (var i = 0; i < Model.FeaturedProducts.Count; i++)
                                     {
-                                        <button type="button" data-bs-target="#newProductsCarousel" data-bs-slide-to="@i" class="@(i == 0 ? "active" : "")" aria-current="@(i == 0 ? "true" : "false")" aria-label="Slide @(i + 1)"></button>
+                                        <button type="button" data-bs-target="#featuredProductsCarousel" data-bs-slide-to="@i" class="@(i == 0 ? "active" : "")" aria-current="@(i == 0 ? "true" : "false")" aria-label="Slide @(i + 1)"></button>
                                     }
                                 </div>
 
                                 <div class="carousel-inner">
-                                    @for (var i = 0; i < Model.NewProducts.Count; i++)
+                                    @for (var i = 0; i < Model.FeaturedProducts.Count; i++)
                                     {
-                                        var p = Model.NewProducts[i];
+                                        var p = Model.FeaturedProducts[i];
                                         <div class="carousel-item @(i == 0 ? "active" : "")">
                                             <a class="text-decoration-none" asp-page="/ProductDetail" asp-route-ProductNumber="@p.ProductNumber">
                                                 <div class="rolix-carousel-frame">
@@ -87,7 +65,7 @@
                                                 </div>
                                             </a>
                                             <div class="rolix-carousel-caption">
-                                                <div class="badge bg-primary bg-opacity-75 mb-2" data-lang-fr="Nouveauté" data-lang-en="New">Nouveauté</div>
+                                                <div class="badge bg-primary bg-opacity-75 mb-2" data-lang-fr="Mise à la une" data-lang-en="Featured">Mise à la une</div>
                                                 <div class="h4 fw-semibold mb-1">@p.Name</div>
                                                 <div class="small text-white-50">@p.Category</div>
                                             </div>
@@ -95,11 +73,11 @@
                                     }
                                 </div>
 
-                                <button class="carousel-control-prev rolix-carousel-control" type="button" data-bs-target="#newProductsCarousel" data-bs-slide="prev">
+                                <button class="carousel-control-prev rolix-carousel-control" type="button" data-bs-target="#featuredProductsCarousel" data-bs-slide="prev">
                                     <span class="carousel-control-prev-icon" aria-hidden="true"></span>
                                     <span class="visually-hidden" data-lang-fr="Précédent" data-lang-en="Previous">Précédent</span>
                                 </button>
-                                <button class="carousel-control-next rolix-carousel-control" type="button" data-bs-target="#newProductsCarousel" data-bs-slide="next">
+                                <button class="carousel-control-next rolix-carousel-control" type="button" data-bs-target="#featuredProductsCarousel" data-bs-slide="next">
                                     <span class="carousel-control-next-icon" aria-hidden="true"></span>
                                     <span class="visually-hidden" data-lang-fr="Suivant" data-lang-en="Next">Suivant</span>
                                 </button>
@@ -120,7 +98,85 @@
         </div>
     </div>
 </section>
+
+<section class="py-4 py-lg-5">
+    <div class="container">
+        <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+            <div>
+                <div class="text-uppercase small text-muted" data-lang-fr="Nouveautés" data-lang-en="New arrivals">Nouveautés</div>
+                <h2 class="h3 fw-bold mb-0" data-lang-fr="À découvrir" data-lang-en="Discover">À découvrir</h2>
+            </div>
+            <a href="/Products" class="btn btn-outline-primary" data-lang-fr="Voir tout" data-lang-en="View all">Voir tout</a>
+        </div>
+
+        @if (Model.NewProducts != null && Model.NewProducts.Any())
+        {
+            <div class="new-products-showcase">
+                <div id="newProductsCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5500">
+                    <div class="carousel-inner">
+                        @for (var i = 0; i < Model.NewProducts.Count; i++)
+                        {
+                            var p = Model.NewProducts[i];
+                            <div class="carousel-item @(i == 0 ? "active" : "")">
+                                <a class="text-decoration-none" asp-page="/ProductDetail" asp-route-ProductNumber="@p.ProductNumber">
+                                    <div class="new-products-slide">
+                                        <div class="new-products-media">
+                                            <img src="@p.ImageUrl" alt="@p.Name" loading="lazy" />
+                                            <div class="new-products-media-overlay"></div>
+                                        </div>
+                                        <div class="new-products-body">
+                                            <div class="new-products-badges">
+                                                <span class="badge" data-lang-fr="Nouveauté" data-lang-en="New">Nouveauté</span>
+                                            </div>
+                                            <div class="new-products-title">@p.Name</div>
+                                            <div class="new-products-subtitle">@p.Category</div>
+                                            <div class="new-products-price product-price" data-price-eur="@(p.PriceEur?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "")" data-price-chf="@(p.PriceChf?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "")" style="display:none;"></div>
+                                            <div class="new-products-cta" data-lang-fr="Voir le détail →" data-lang-en="View details →">Voir le détail →</div>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        }
+                    </div>
+
+                    @if (Model.NewProducts.Count > 1)
+                    {
+                        <button class="carousel-control-prev new-products-control" type="button" data-bs-target="#newProductsCarousel" data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden" data-lang-fr="Précédent" data-lang-en="Previous">Précédent</span>
+                        </button>
+                        <button class="carousel-control-next new-products-control" type="button" data-bs-target="#newProductsCarousel" data-bs-slide="next">
+                            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                            <span class="visually-hidden" data-lang-fr="Suivant" data-lang-en="Next">Suivant</span>
+                        </button>
+                    }
+
+                    <div class="carousel-indicators new-products-indicators">
+                        @for (var i = 0; i < Model.NewProducts.Count; i++)
+                        {
+                            var p = Model.NewProducts[i];
+                            <button type="button"
+                                    data-bs-target="#newProductsCarousel"
+                                    data-bs-slide-to="@i"
+                                    class="@(i == 0 ? "active" : "")"
+                                    aria-current="@(i == 0 ? "true" : "false")"
+                                    aria-label="Slide @(i + 1)"
+                                    style="background-image: url('@p.ImageUrl');">
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="text-muted" data-lang-fr="Aucune nouveauté pour le moment." data-lang-en="No new products for now.">Aucune nouveauté pour le moment.</div>
+        }
+    </div>
+</section>
+
 <!-- Section Fonctionnalités -->
+<!--
 <section id="features" class="py-5 py-lg-7 bg-light">
     <div class="container">
         <div class="text-center mb-5">
@@ -227,8 +283,10 @@
         </div>
     </div>
 </section>
+-->
 
 <!-- Section Témoignages -->
+<!--
 <section class="py-5 py-lg-7 bg-white">
     <div class="container">
         <div class="text-center mb-5">
@@ -330,8 +388,10 @@
         </div>
     </div>
 </section>
+-->
 
 <!-- Section CTA -->
+<!--
 <section class="py-5 py-lg-7 text-white bg-">
     <div class="container">
         <div class="row justify-content-center">
@@ -367,144 +427,149 @@
         </div>
     </div>
 </section>
+-->
 
- <!-- Section Contact -->
- <section id="contact" class="py-5 py-lg-7 bg-body-tertiary">
-     <div class="container">
-         <div class="row align-items-center g-4 g-lg-5">
-             <div class="col-lg-5">
-                 <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill mb-3 d-inline-block"
-                       data-lang-fr="Contact"
-                       data-lang-en="Contact">
-                     Contact
-                 </span>
-                 <h2 class="fw-bold mb-3"
-                     data-lang-fr="Parlons de votre prochaine pièce"
-                     data-lang-en="Let’s find your next piece">
-                     Parlons de votre prochaine pièce
-                 </h2>
-                 <p class="lead text-muted mb-4"
-                    data-lang-fr="Besoin d'un conseil sur un modèle, un bracelet ou une taille ? Écrivez-nous, nous vous répondons rapidement."
-                    data-lang-en="Need advice on a model, strap, or size? Write to us—we’ll get back to you quickly.">
-                     Besoin d'un conseil sur un modèle, un bracelet ou une taille ? Écrivez-nous, nous vous répondons rapidement.
-                 </p>
+<!-- Section Contact -->
+<!--
+<section id="contact" class="py-5 py-lg-7 bg-body-tertiary">
+    <div class="container">
+        <div class="row align-items-center g-4 g-lg-5">
+            <div class="col-lg-5">
+                <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill mb-3 d-inline-block"
+                    data-lang-fr="Contact"
+                    data-lang-en="Contact">
+                    Contact
+                </span>
+                <h2 class="fw-bold mb-3"
+                    data-lang-fr="Parlons de votre prochaine pièce"
+                    data-lang-en="Let’s find your next piece">
+                    Parlons de votre prochaine pièce
+                </h2>
+                <p class="lead text-muted mb-4"
+                data-lang-fr="Besoin d'un conseil sur un modèle, un bracelet ou une taille ? Écrivez-nous, nous vous répondons rapidement."
+                data-lang-en="Need advice on a model, strap, or size? Write to us—we’ll get back to you quickly.">
+                    Besoin d'un conseil sur un modèle, un bracelet ou une taille ? Écrivez-nous, nous vous répondons rapidement.
+                </p>
 
-                 <div class="d-grid gap-3">
-                     <div class="d-flex align-items-start gap-3">
-                         <div class="icon-badge bg-primary bg-opacity-10 text-primary">
-                             <i class="fas fa-envelope"></i>
-                         </div>
-                         <div>
-                            <div class="fw-semibold" data-lang-fr="Email" data-lang-en="Email">Email</div>
-                            <div class="text-muted">contact@rolix.com</div>
+                <div class="d-grid gap-3">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="icon-badge bg-primary bg-opacity-10 text-primary">
+                            <i class="fas fa-envelope"></i>
                         </div>
-                     </div>
-                     <div class="d-flex align-items-start gap-3">
-                         <div class="icon-badge bg-primary bg-opacity-10 text-primary">
-                             <i class="fas fa-phone"></i>
-                         </div>
-                         <div>
-                             <div class="fw-semibold" data-lang-fr="Téléphone" data-lang-en="Phone">Téléphone</div>
-                             <div class="text-muted">+33 1 23 45 67 89</div>
-                         </div>
-                     </div>
-                     <div class="d-flex align-items-start gap-3">
-                         <div class="icon-badge bg-primary bg-opacity-10 text-primary">
-                             <i class="fas fa-clock"></i>
-                         </div>
-                         <div>
-                             <div class="fw-semibold" data-lang-fr="Horaires" data-lang-en="Hours">Horaires</div>
-                             <div class="text-muted" data-lang-fr="Lun–Ven, 9h–18h" data-lang-en="Mon–Fri, 9am–6pm">Lun–Ven, 9h–18h</div>
-                         </div>
-                     </div>
-                 </div>
-             </div>
+                        <div>
+                        <div class="fw-semibold" data-lang-fr="Email" data-lang-en="Email">Email</div>
+                        <div class="text-muted">contact@rolix.com</div>
+                    </div>
+                    </div>
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="icon-badge bg-primary bg-opacity-10 text-primary">
+                            <i class="fas fa-phone"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold" data-lang-fr="Téléphone" data-lang-en="Phone">Téléphone</div>
+                            <div class="text-muted">+33 1 23 45 67 89</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="icon-badge bg-primary bg-opacity-10 text-primary">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold" data-lang-fr="Horaires" data-lang-en="Hours">Horaires</div>
+                            <div class="text-muted" data-lang-fr="Lun–Ven, 9h–18h" data-lang-en="Mon–Fri, 9am–6pm">Lun–Ven, 9h–18h</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-             <div class="col-lg-7">
-                 <div class="card border-0 shadow-sm rounded-4">
-                     <div class="card-body p-4 p-lg-5">
-                         <h3 class="h5 fw-bold mb-4"
-                             data-lang-fr="Envoyer un message"
-                             data-lang-en="Send a message">
-                             Envoyer un message
-                         </h3>
+            <div class="col-lg-7">
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-body p-4 p-lg-5">
+                        <h3 class="h5 fw-bold mb-4"
+                            data-lang-fr="Envoyer un message"
+                            data-lang-en="Send a message">
+                            Envoyer un message
+                        </h3>
 
-                         <form>
-                             <div class="row g-3">
-                                 <div class="col-md-6">
-                                     <label class="form-label fw-medium" data-lang-fr="Nom" data-lang-en="Name">Nom</label>
-                                     <input type="text" class="form-control form-control-lg" />
-                                 </div>
-                                 <div class="col-md-6">
-                                     <label class="form-label fw-medium" data-lang-fr="Email" data-lang-en="Email">Email</label>
-                                     <input type="email" class="form-control form-control-lg" />
-                                 </div>
-                                 <div class="col-12">
-                                     <label class="form-label fw-medium" data-lang-fr="Sujet" data-lang-en="Subject">Sujet</label>
-                                     <input type="text" class="form-control form-control-lg" />
-                                 </div>
-                                 <div class="col-12">
-                                     <label class="form-label fw-medium" data-lang-fr="Message" data-lang-en="Message">Message</label>
-                                     <textarea class="form-control" rows="5"></textarea>
-                                 </div>
-                                 <div class="col-12 d-flex flex-column flex-sm-row gap-3 align-items-sm-center justify-content-between mt-2">
-                                     <button type="button" class="btn btn-primary btn-lg px-4">
-                                         <span data-lang-fr="Envoyer" data-lang-en="Send">Envoyer</span>
-                                         <i class="fas fa-paper-plane ms-2"></i>
-                                     </button>
-                                     <div class="text-muted small" data-lang-fr="Réponse sous 24h ouvrées" data-lang-en="Reply within 1 business day">Réponse sous 24h ouvrées</div>
-                                 </div>
-                             </div>
-                         </form>
-                     </div>
-                 </div>
-             </div>
-         </div>
-     </div>
- </section>
+                        <form>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-medium" data-lang-fr="Nom" data-lang-en="Name">Nom</label>
+                                    <input type="text" class="form-control form-control-lg" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-medium" data-lang-fr="Email" data-lang-en="Email">Email</label>
+                                    <input type="email" class="form-control form-control-lg" />
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-medium" data-lang-fr="Sujet" data-lang-en="Subject">Sujet</label>
+                                    <input type="text" class="form-control form-control-lg" />
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-medium" data-lang-fr="Message" data-lang-en="Message">Message</label>
+                                    <textarea class="form-control" rows="5"></textarea>
+                                </div>
+                                <div class="col-12 d-flex flex-column flex-sm-row gap-3 align-items-sm-center justify-content-between mt-2">
+                                    <button type="button" class="btn btn-primary btn-lg px-4">
+                                        <span data-lang-fr="Envoyer" data-lang-en="Send">Envoyer</span>
+                                        <i class="fas fa-paper-plane ms-2"></i>
+                                    </button>
+                                    <div class="text-muted small" data-lang-fr="Réponse sous 24h ouvrées" data-lang-en="Reply within 1 business day">Réponse sous 24h ouvrées</div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+-->
 
- <!-- Section Newsletter -->
- <section class="py-5 py-lg-7 bg-white">
-     <div class="container">
-         <div class="row justify-content-center">
-             <div class="col-lg-10">
-                 <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-                     <div class="card-body p-4 p-lg-5">
-                         <div class="row align-items-center g-4">
-                             <div class="col-lg-6">
-                                 <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill mb-3 d-inline-block"
-                                       data-lang-fr="Newsletter"
-                                       data-lang-en="Newsletter">
-                                     Newsletter
-                                 </span>
-                                 <h2 class="fw-bold mb-2"
-                                     data-lang-fr="Recevez nos nouveautés"
-                                     data-lang-en="Get product updates">
-                                     Recevez nos nouveautés
-                                 </h2>
-                                 <p class="text-muted mb-0"
-                                    data-lang-fr="Une fois par mois : conseils, nouveautés et bonnes pratiques."
-                                    data-lang-en="Once a month: tips, updates and best practices.">
-                                     Une fois par mois : conseils, nouveautés et bonnes pratiques.
-                                 </p>
-                             </div>
-                             <div class="col-lg-6">
-                                 <form class="d-flex flex-column flex-sm-row gap-2">
-                                     <input type="email" class="form-control form-control-lg" placeholder="Email" />
-                                     <button type="button" class="btn btn-dark btn-lg px-4">
-                                         <span data-lang-fr="S'inscrire" data-lang-en="Subscribe">S'inscrire</span>
-                                     </button>
-                                 </form>
-                                 <p class="small text-muted mt-2 mb-0"
-                                    data-lang-fr="En vous inscrivant, vous acceptez de recevoir nos emails. Désinscription en 1 clic."
-                                    data-lang-en="By subscribing, you agree to receive our emails. Unsubscribe anytime.">
-                                     En vous inscrivant, vous acceptez de recevoir nos emails. Désinscription en 1 clic.
-                                 </p>
-                             </div>
-                         </div>
-                     </div>
-                 </div>
-             </div>
-         </div>
-     </div>
- </section>
+<!-- Section Newsletter -->
+<!--
+<section class="py-5 py-lg-7 bg-white">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    <div class="card-body p-4 p-lg-5">
+                        <div class="row align-items-center g-4">
+                            <div class="col-lg-6">
+                                <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill mb-3 d-inline-block"
+                                    data-lang-fr="Newsletter"
+                                    data-lang-en="Newsletter">
+                                    Newsletter
+                                </span>
+                                <h2 class="fw-bold mb-2"
+                                    data-lang-fr="Recevez nos nouveautés"
+                                    data-lang-en="Get product updates">
+                                    Recevez nos nouveautés
+                                </h2>
+                                <p class="text-muted mb-0"
+                                data-lang-fr="Une fois par mois : conseils, nouveautés et bonnes pratiques."
+                                data-lang-en="Once a month: tips, updates and best practices.">
+                                    Une fois par mois : conseils, nouveautés et bonnes pratiques.
+                                </p>
+                            </div>
+                            <div class="col-lg-6">
+                                <form class="d-flex flex-column flex-sm-row gap-2">
+                                    <input type="email" class="form-control form-control-lg" placeholder="Email" />
+                                    <button type="button" class="btn btn-dark btn-lg px-4">
+                                        <span data-lang-fr="S'inscrire" data-lang-en="Subscribe">S'inscrire</span>
+                                    </button>
+                                </form>
+                                <p class="small text-muted mt-2 mb-0"
+                                data-lang-fr="En vous inscrivant, vous acceptez de recevoir nos emails. Désinscription en 1 clic."
+                                data-lang-en="By subscribing, you agree to receive our emails. Unsubscribe anytime.">
+                                    En vous inscrivant, vous acceptez de recevoir nos emails. Désinscription en 1 clic.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+-->

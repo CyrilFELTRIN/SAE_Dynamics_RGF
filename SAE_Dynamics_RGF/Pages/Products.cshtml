@@ -20,6 +20,7 @@
                     Explorez tous les produits synchronisés depuis Dynamics/Dataverse.
                 </p>
             </div>
+            <!--
             <div class="col-lg-4 d-none d-lg-block">
                 <div class="card border-0 shadow-sm rounded-4">
                     <div class="card-body p-4">
@@ -35,6 +36,7 @@
                     </div>
                 </div>
             </div>
+            -->
         </div>
     </div>
 </section>
@@ -93,6 +95,7 @@
                                         <i class="fas fa-arrow-right text-muted"></i>
                                     </div>
                                     <div class="text-muted small mb-0">@p.Category</div>
+                                    <div class="mt-2 fw-semibold product-price" data-price-eur="@(p.PriceEur?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "")" data-price-chf="@(p.PriceChf?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "")" style="display:none;"></div>
                                 </div>
                             </div>
                         </a>
