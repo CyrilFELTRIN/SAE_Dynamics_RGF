@@ -6,33 +6,41 @@
 
 <h2 data-lang-fr="Mes devis" data-lang-en="My quotes">@ViewData["Title"]</h2>
 
-<div class="table-responsive mt-4">
-    <table class="table table-bordered table-striped text-center align-middle">
-        <thead class="table-light">
-            <tr>
-                <th data-lang-fr="Numéro" data-lang-en="Number">Numéro</th>
-                <th data-lang-fr="Nom" data-lang-en="Name">Nom</th>
-                <th data-lang-fr="Date" data-lang-en="Date">Date</th>
-                <th data-lang-fr="Montant (€)" data-lang-en="Amount (€)">Montant (€)</th>
-                <th data-lang-fr="Client" data-lang-en="Customer">Client</th>
-                <th data-lang-fr="Liste de prix" data-lang-en="Price List">Liste de prix</th>
-                <th data-lang-fr="Statut" data-lang-en="Status">Statut</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var quote in Model.Quotes)
-            {
+@if (!Model.Quotes.Any())
+{
+    <div class="alert alert-info mt-4">
+        <i class="bi bi-info-circle"></i> Vous n'avez pas encore de devis.
+    </div>
+}
+else
+{
+    <div class="table-responsive mt-4">
+        <table class="table table-bordered table-striped text-center align-middle">
+            <thead class="table-light">
                 <tr>
-                    <td>@quote.QuoteNumber</td>
-                    <td>@quote.Name</td>
-                    <td>@quote.CreatedOn.ToString("dd/MM/yyyy")</td>
-                    <td>@quote.TotalAmount.ToString("F2")</td>
-                    <td>@quote.CustomerId</td>
-                    <td>@quote.PriceLevelId</td>
-                    <td>@quote.StateCode</td>
+                    <th data-lang-fr="Numéro" data-lang-en="Number">Numéro</th>
+                    <th data-lang-fr="Nom" data-lang-en="Name">Nom</th>
+                    <th data-lang-fr="Date" data-lang-en="Date">Date</th>
+                    <th data-lang-fr="Montant (€)" data-lang-en="Amount (€)">Montant (€)</th>
+                    <th data-lang-fr="Client" data-lang-en="Customer">Client</th>
+                    <th data-lang-fr="Liste de prix" data-lang-en="Price List">Liste de prix</th>
+                    <th data-lang-fr="Statut" data-lang-en="Status">Statut</th>
                 </tr>
-            }
-        </tbody>
-    </table>
-</div>
-
+            </thead>
+            <tbody>
+                @foreach (var quote in Model.Quotes)
+                {
+                    <tr>
+                        <td>@quote.QuoteNumber</td>
+                        <td>@quote.Name</td>
+                        <td>@quote.CreatedOn.ToString("dd/MM/yyyy")</td>
+                        <td>@quote.TotalAmount.ToString("F2")</td>
+                        <td>@quote.CustomerId</td>
+                        <td>@quote.PriceLevelId</td>
+                        <td>@quote.StateCode</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
