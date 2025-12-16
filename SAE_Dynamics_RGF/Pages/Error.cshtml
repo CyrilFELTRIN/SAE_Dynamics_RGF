@@ -1,0 +1,26 @@
+﻿@page
+@model SAE_Dynamics_RGF.Pages.ErrorModel
+@{
+    ViewData["Title"] = Model.StatusCode == 404 ? "Page non trouvée" : "Erreur";
+}
+
+<div class="container text-center mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h1 class="display-1 text-danger">
+                @(Model.StatusCode == 404 ? "404" : Model.StatusCode.ToString())
+            </h1>
+            <h2 class="mb-4">
+                @(Model.StatusCode == 404
+                                ? "Oups ! La page que vous cherchez n'existe pas."
+                                : "Une erreur est survenue sur le serveur.")
+            </h2>
+            <p class="lead mb-4">
+                @(Model.StatusCode == 404
+                                ? "Elle a peut-être été déplacée ou supprimée. Vous pouvez revenir à la page d'accueil."
+                                : "Nous travaillons pour résoudre le problème. Vous pouvez réessayer plus tard.")
+            </p>
+            <a href="/" class="btn btn-primary btn-lg">Retour à l'accueil</a>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,37 @@
+﻿@page
+@model SAE_Dynamics_RGF.Pages.LogoutModel
+@{
+    ViewData["Title"] = "Déconnexion";
+    Layout = "_Layout"; // Utiliser le layout global
+}
+
+<section class="py-5 py-lg-7">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-sm-10 col-md-8 col-lg-6 col-xl-5">
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-body p-4 p-lg-5 text-center">
+                        <div class="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10 text-primary"
+                             style="width: 64px; height: 64px;">
+                            <div class="spinner-border" role="status" aria-label="Loading"></div>
+                        </div>
+                        <h1 class="h4 fw-bold mb-2" data-lang-fr="Déconnexion" data-lang-en="Logging out">
+                            Déconnexion
+                        </h1>
+                        <p class="text-muted mb-0" data-lang-fr="Déconnexion en cours..." data-lang-en="Signing you out...">
+                            Déconnexion en cours...
+                        </p>
+                        <p class="small text-muted mt-3 mb-0" data-lang-fr="Si rien ne se passe, retournez à l'accueil." data-lang-en="If nothing happens, go back to home.">
+                            Si rien ne se passe, retournez à l'accueil.
+                        </p>
+                        <div class="mt-3">
+                            <a href="/" class="btn btn-outline-primary">
+                                <span data-lang-fr="Accueil" data-lang-en="Home">Accueil</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

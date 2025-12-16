@@ -1,0 +1,93 @@
+﻿@page
+@model SAE_Dynamics_RGF.Pages.ProductDetailModel
+@{ 
+    ViewData["Title"] = "Détails du produit";
+}
+
+<section class="py-4 py-lg-5 bg-body-tertiary">
+    <div class="container">
+        <nav class="mb-3" aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="/" class="text-decoration-none" data-lang-fr="Accueil" data-lang-en="Home">Accueil</a></li>
+                <li class="breadcrumb-item"><a href="/Products" class="text-decoration-none" data-lang-fr="Produits" data-lang-en="Products">Produits</a></li>
+                <li class="breadcrumb-item active" aria-current="page" data-lang-fr="Détails" data-lang-en="Details">Détails</li>
+            </ol>
+        </nav>
+
+        @if (Model.Product == null)
+        {
+            <div class="text-center py-5">
+                <div class="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10 text-primary"
+                     style="width: 64px; height: 64px;">
+                    <i class="fas fa-circle-exclamation"></i>
+                </div>
+                <h1 class="h4 fw-bold mb-2" data-lang-fr="Produit non trouvé" data-lang-en="Product not found">Produit non trouvé</h1>
+                <p class="text-muted mb-0" data-lang-fr="Le produit demandé n'existe pas ou n'est plus disponible." data-lang-en="The requested product doesn't exist or is no longer available.">
+                    Le produit demandé n'existe pas ou n'est plus disponible.
+                </p>
+                <div class="mt-4">
+                    <a href="/Products" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        <span data-lang-fr="Retour au catalogue" data-lang-en="Back to catalog">Retour au catalogue</span>
+                    </a>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="row g-4 g-lg-5 align-items-start">
+                <div class="col-lg-6">
+                    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                        <div class="ratio ratio-4x3 bg-body-tertiary">
+                            <img src="@Model.Product.ImageUrl" class="w-100 h-100" alt="@Model.Product.Name" style="object-fit: cover;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+                        <div>
+                            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill mb-2 d-inline-block"
+                                  data-lang-fr="Détails produit"
+                                  data-lang-en="Product details">
+                                Détails produit
+                            </span>
+                            <h1 class="display-6 fw-bold mb-1">@Model.Product.Name</h1>
+                            <div class="text-muted" data-lang-fr="Informations issues de Dataverse" data-lang-en="Information from Dataverse">Informations issues de Dataverse</div>
+                        </div>
+                        <a href="/Products" class="btn btn-outline-primary d-none d-sm-inline-flex align-items-center">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            <span data-lang-fr="Retour" data-lang-en="Back">Retour</span>
+                        </a>
+                    </div>
+
+                    <div class="card border-0 shadow-sm rounded-4">
+                        <div class="card-body p-4">
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <div class="text-muted small" data-lang-fr="Numéro du produit" data-lang-en="Product number">Numéro du produit</div>
+                                    <div class="fw-semibold">@Model.ProductNumber</div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="text-muted small" data-lang-fr="Catégorie" data-lang-en="Category">Catégorie</div>
+                                    <div class="fw-semibold">@Model.Product.Category</div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
+                                <a href="/Products" class="btn btn-outline-primary w-100 w-sm-auto">
+                                    <i class="fas fa-arrow-left me-2"></i>
+                                    <span data-lang-fr="Retour au catalogue" data-lang-en="Back to catalog">Retour au catalogue</span>
+                                </a>
+                                <a href="#" class="btn btn-primary w-100 w-sm-auto">
+                                    <i class="fas fa-cart-shopping me-2"></i>
+                                    <span data-lang-fr="Demander un devis" data-lang-en="Request a quote">Demander un devis</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</section>

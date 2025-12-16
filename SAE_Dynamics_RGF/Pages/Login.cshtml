@@ -1,0 +1,58 @@
+﻿@page
+@model SAE_Dynamics_RGF.Pages.LoginModel
+@{ 
+    ViewData["Title"] = "Connexion";
+}
+
+<section class="py-5 py-lg-7">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-sm-10 col-md-8 col-lg-5 col-xl-4">
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    <div class="card-body p-4 p-lg-5">
+                        <div class="text-center mb-4">
+                            <div class="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-10 text-primary"
+                                 style="width: 64px; height: 64px;">
+                                <i class="fas fa-user-lock"></i>
+                            </div>
+                            <h1 class="h3 fw-bold mb-1" data-lang-fr="Connexion" data-lang-en="Login">Connexion</h1>
+                            <p class="text-muted mb-0" data-lang-fr="Accédez à votre espace en toute sécurité." data-lang-en="Access your space securely.">
+                                Accédez à votre espace en toute sécurité.
+                            </p>
+                        </div>
+
+                        <!-- ✅ Formulaire lié à la PageModel -->
+                        <form method="post" class="d-grid gap-3">
+                            <div>
+                                <label asp-for="Crda6Id" class="form-label fw-medium" data-lang-fr="Identifiant" data-lang-en="Username">Identifiant</label>
+                                <input asp-for="Crda6Id" class="form-control form-control-lg" placeholder="Votre identifiant" required />
+                            </div>
+                            <div>
+                                <label asp-for="Crda6Password" class="form-label fw-medium" data-lang-fr="Mot de passe" data-lang-en="Password">Mot de passe</label>
+                                <input asp-for="Crda6Password" type="password" class="form-control form-control-lg" placeholder="••••••••" required />
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                <span data-lang-fr="Se connecter" data-lang-en="Sign in">Se connecter</span>
+                                <i class="fas fa-arrow-right ms-2"></i>
+                            </button>
+                        </form>
+
+                        <!-- Message d’erreur éventuel -->
+                        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                        {
+                            <div class="alert alert-danger mt-3 mb-0 text-center">
+                                @Model.ErrorMessage
+                            </div>
+                        }
+
+                        <p class="text-center mt-3 mb-0">
+                            <small class="text-muted" data-lang-fr="Oubli ? Demandez la réinitialisation à l’admin." data-lang-en="Forgot? Ask the admin for a reset.">
+                                Oubli ? Demandez la réinitialisation à l’admin.
+                            </small>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
