@@ -14,11 +14,13 @@
                     Catalogue
                 </span>
                 <h1 class="display-5 fw-bold mb-3" data-lang-fr="Nos produits" data-lang-en="Our products">Nos produits</h1>
+                <!--
                 <p class="lead text-muted mb-0"
                    data-lang-fr="Explorez tous les produits synchronisés depuis Dynamics/Dataverse."
                    data-lang-en="Browse all products synced from Dynamics/Dataverse.">
                     Explorez tous les produits synchronisés depuis Dynamics/Dataverse.
                 </p>
+                -->
             </div>
             <!--
             <div class="col-lg-4 d-none d-lg-block">
@@ -43,30 +45,78 @@
 
 <section class="py-5">
     <div class="container">
-        <!--
-        <div class="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-3 mb-4">
-            <div>
-                <h2 class="h3 fw-bold mb-1" data-lang-fr="Produits" data-lang-en="Products">Produits</h2>
-                <p class="text-muted mb-0" data-lang-fr="Cliquez sur un produit pour voir le détail." data-lang-en="Click a product to view details.">Cliquez sur un produit pour voir le détail.</p>
+        <div class="row g-3 align-items-end mb-4">
+            <div class="col-12 col-lg-6">
+                <div class="product-toolbar-field">
+                    <div class="product-toolbar-label" data-lang-fr="Rechercher" data-lang-en="Search">Rechercher</div>
+                    <div class="product-toolbar-control">
+                        <form id="searchForm" autocomplete="off" class="product-toolbar-search">
+                            <span class="product-toolbar-icon" aria-hidden="true">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text"
+                                   id="searchInput"
+                                   class="product-toolbar-input"
+                                   placeholder="Rechercher un produit..."
+                                   data-lang-fr-placeholder="Rechercher un produit..."
+                                   data-lang-en-placeholder="Search for a product..."
+                                   list="productSuggestions"
+                                   autocomplete="off">
+                            <button type="button" id="clearSearch" class="product-toolbar-clear d-none" aria-label="Clear">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <datalist id="productSuggestions">
+                    @foreach (var p in Model.Products)
+                    {
+                        <option value="@p.Name"></option>
+                    }
+                </datalist>
             </div>
-        </div>
-        -->
 
-        @if (Model.ParentProducts?.Any() == true)
-        {
-            <div class="row g-3 align-items-end mb-4">
-                <div class="col-12 col-md-6 col-lg-4">
-                    <label for="parentFilter" class="form-label mb-1" data-lang-fr="Filtrer par catégorie" data-lang-en="Filter by category">Filtrer par catégorie</label>
-                    <select id="parentFilter" class="form-select">
-                        <option value="" data-lang-fr="Tous les produits" data-lang-en="All products">Tous les produits</option>
+            @if (Model.ParentProducts?.Any() == true)
+            {
+                <div class="col-12 col-md-6 col-lg-3">
+                    <div class="product-toolbar-field">
+                        <div class="product-toolbar-label" data-lang-fr="Filtrer" data-lang-en="Filter">Filtrer</div>
+                        <div class="product-toolbar-control">
+                            <span class="product-toolbar-select-icon" aria-hidden="true">
+                                <i class="fas fa-layer-group"></i>
+                            </span>
+                            <select id="parentFilter" class="product-toolbar-select">
+                        <option value="" data-lang-fr="Toutes les catégories" data-lang-en="All categories">Toutes les catégories</option>
                         @foreach (var parent in Model.ParentProducts)
                         {
                             <option value="@parent.Name">@parent.Name</option>
                         }
-                    </select>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <div class="col-12 col-md-6 col-lg-3">
+                <div class="product-toolbar-field">
+                    <div class="product-toolbar-label" data-lang-fr="Trier" data-lang-en="Sort">Trier</div>
+                    <div class="product-toolbar-control">
+                        <span class="product-toolbar-select-icon" aria-hidden="true">
+                            <i class="fas fa-sort"></i>
+                        </span>
+                        <select id="sortSelect" class="product-toolbar-select">
+                    <option value="" data-lang-fr="Aucun tri" data-lang-en="No sorting">Aucun tri</option>
+                    <option value="name-asc" data-lang-fr="Nom (A-Z)" data-lang-en="Name (A-Z)">Nom (A-Z)</option>
+                    <option value="name-desc" data-lang-fr="Nom (Z-A)" data-lang-en="Name (Z-A)">Nom (Z-A)</option>
+                    <option value="price-asc" data-lang-fr="Prix (croissant)" data-lang-en="Price (low to high)">Prix (croissant)</option>
+                    <option value="price-desc" data-lang-fr="Prix (décroissant)" data-lang-en="Price (high to low)">Prix (décroissant)</option>
+                    <option value="category-asc" data-lang-fr="Catégorie (A-Z)" data-lang-en="Category (A-Z)">Catégorie (A-Z)</option>
+                    <option value="category-desc" data-lang-fr="Catégorie (Z-A)" data-lang-en="Category (Z-A)">Catégorie (Z-A)</option>
+                        </select>
+                    </div>
                 </div>
             </div>
-        }
+        </div>
 
         @if (Model.Products == null || !Model.Products.Any())
         {
@@ -105,24 +155,3 @@
         }
     </div>
 </section>
-
-@if (Model.ParentProducts?.Any() == true)
-{
-    <script>
-        (function () {
-            const filterSelect = document.getElementById('parentFilter');
-            if (!filterSelect) return;
-
-            filterSelect.addEventListener('change', function () {
-                const value = this.value;
-                document.querySelectorAll('.product-card').forEach(card => {
-                    if (!value || card.dataset.parent === value) {
-                        card.style.display = '';
-                    } else {
-                        card.style.display = 'none';
-                    }
-                });
-            });
-        })();
-    </script>
-}

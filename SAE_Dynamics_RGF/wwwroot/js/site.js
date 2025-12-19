@@ -284,17 +284,237 @@ document.addEventListener('DOMContentLoaded', function () {
         setCurrency(getCurrency());
 
         if (currencyToggle) {
-            currencyToggle.addEventListener('change', () => {
-                setCurrency(currencyToggle.checked ? 'CHF' : 'EUR');
+            currencyToggle.addEventListener('change', function (e) {
+                const newCurrency = this.checked ? 'CHF' : 'EUR';
+                setCurrency(newCurrency);
+                applyCurrencyToPrices();
             });
         }
 
-        // Si la langue change via le bouton existant, on reformate les prix
-        const langToggle = document.getElementById('lang-toggle');
-        if (langToggle) {
-            langToggle.addEventListener('change', () => {
-                setTimeout(applyCurrencyToPrices, 0);
+        // Initialisation des tooltips Bootstrap
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    })();
+
+    // Gestion de la recherche de produits + filtre + tri
+    const searchInput = document.getElementById('searchInput');
+    const clearSearchBtn = document.getElementById('clearSearch');
+    const filterSelect = document.getElementById('parentFilter');
+    const sortSelect = document.getElementById('sortSelect');
+    const productsContainer = document.getElementById('productsContainer');
+    const productCards = document.querySelectorAll('.product-card');
+
+    if (searchInput && clearSearchBtn && productsContainer && productCards.length > 0) {
+        let lastSearchValue = searchInput.value || '';
+
+        function isFrench() {
+            return document.documentElement.lang === 'fr' ||
+                (document.documentElement.getAttribute('data-lang') || '').startsWith('fr');
+        }
+
+        // Mise à jour du placeholder en fonction de la langue
+        function updateSearchPlaceholder() {
+            searchInput.placeholder = isFrench()
+                ? searchInput.getAttribute('data-lang-fr-placeholder')
+                : searchInput.getAttribute('data-lang-en-placeholder');
+        }
+
+        function resetControls() {
+            // Ne plus réinitialiser les valeurs ici
+            // Les contrôles gardent leur état
+        }
+
+        function getCardName(card) {
+            return (card.querySelector('h3')?.textContent || '').toString().trim();
+        }
+
+        function getCardCategory(card) {
+            return (card.getAttribute('data-parent') || '').toString().trim();
+        }
+
+        function getCardPrice(card) {
+            const priceEl = card.querySelector('.product-price');
+            if (!priceEl) return null;
+            const raw = (priceEl.getAttribute('data-price-eur') || '').toString().trim();
+            if (!raw) return null;
+            const n = Number(raw);
+            return Number.isFinite(n) ? n : null;
+        }
+
+        function applySort(cards) {
+            const mode = (sortSelect ? sortSelect.value : '').toString();
+            if (!mode) return cards;
+
+            const dir = mode.endsWith('-desc') ? -1 : 1;
+            const key = mode.replace(/-(asc|desc)$/i, '');
+
+            return cards.slice().sort((a, b) => {
+                let av;
+                let bv;
+
+                if (key === 'name') {
+                    av = getCardName(a).toLowerCase();
+                    bv = getCardName(b).toLowerCase();
+                } else if (key === 'category') {
+                    av = getCardCategory(a).toLowerCase();
+                    bv = getCardCategory(b).toLowerCase();
+                } else if (key === 'price') {
+                    av = getCardPrice(a);
+                    bv = getCardPrice(b);
+                    if (av == null && bv == null) return 0;
+                    if (av == null) return 1;
+                    if (bv == null) return -1;
+                } else {
+                    return 0;
+                }
+
+                if (av === bv) return 0;
+                return av > bv ? 1 * dir : -1 * dir;
             });
         }
-    })();
+
+        function renderNoResults(show) {
+            const existing = document.getElementById('noResultsMessage');
+            if (!show) {
+                if (existing) existing.remove();
+                return;
+            }
+
+            if (existing) return;
+
+            const noResults = document.createElement('div');
+            noResults.id = 'noResultsMessage';
+            noResults.className = 'col-12 text-center py-5';
+            noResults.innerHTML = `
+                <div class="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle bg-light text-muted"
+                     style="width: 64px; height: 64px;">
+                    <i class="fas fa-search"></i>
+                </div>
+                <p class="text-muted mb-0" data-lang-fr="Aucun produit ne correspond à votre recherche."
+                   data-lang-en="No products match your search.">
+                    Aucun produit ne correspond à votre recherche.
+                </p>
+            `;
+            productsContainer.appendChild(noResults);
+        }
+
+        function applyPipeline() {
+            const term = (searchInput.value || '').toString().trim().toLowerCase();
+            const searchActive = term.length > 0;
+            
+            // Mettre à jour l'état du bouton de réinitialisation
+            clearSearchBtn.classList.toggle('d-none', !searchActive);
+            
+            // Récupérer tous les produits
+            const all = Array.from(productCards);
+            
+            // Récupérer les valeurs actuelles des filtres et du tri
+            const filterValue = filterSelect ? filterSelect.value : '';
+            const sortValue = sortSelect ? sortSelect.value : '';
+            
+            // Étape 1: Filtrer par recherche (si terme de recherche)
+            let filtered = searchActive 
+                ? all.filter(card => getCardName(card).toLowerCase().includes(term))
+                : all;
+            
+            // Étape 2: Appliquer le filtre (si sélectionné)
+            if (filterValue) {
+                filtered = filtered.filter(card => getCardCategory(card) === filterValue);
+            }
+            
+            // Étape 3: Appliquer le tri (si sélectionné)
+            let sorted = sortValue ? applySort(filtered) : filtered;
+            
+            // Mettre à jour l'UI
+            updateUIBasedOnResults(sorted, all);
+            
+            // Mettre à jour la dernière valeur de recherche
+            lastSearchValue = term;
+        }
+        
+        function applyCurrencyToPrices() {
+            const currency = getCurrency();
+            document.querySelectorAll('.product-price').forEach((el) => {
+                const eur = (el.getAttribute('data-price-eur') || '').toString().trim();
+                const chf = (el.getAttribute('data-price-chf') || '').toString().trim();
+                const raw = currency === 'CHF' ? chf : eur;
+
+                if (!raw) {
+                    el.style.display = 'none';
+                    el.textContent = '';
+                    return;
+                }
+
+                const formatted = formatPrice(raw, currency);
+                if (!formatted) {
+                    el.style.display = 'none';
+                    el.textContent = '';
+                    return;
+                }
+
+                el.textContent = formatted;
+                el.style.display = '';
+            });
+        }
+
+        function updateUIBasedOnResults(visibleCards, allCards) {
+            // Cacher tous les éléments d'abord
+            allCards.forEach(card => card.style.display = 'none');
+            
+            // Afficher uniquement les cartes visibles
+            visibleCards.forEach(card => card.style.display = '');
+            
+            // Réorganiser le DOM pour refléter l'ordre de tri
+            visibleCards.forEach(card => productsContainer.appendChild(card));
+            
+            // Mettre à jour les prix selon la devise
+            applyCurrencyToPrices();
+            
+            // Afficher le message "Aucun résultat" si nécessaire
+            renderNoResults(visibleCards.length === 0 && (searchInput.value || '').trim().length > 0);
+        }
+
+        // Événements
+        searchInput.addEventListener('input', applyPipeline);
+
+        clearSearchBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            applyPipeline();
+            searchInput.focus();
+        });
+
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                searchInput.value = '';
+                applyPipeline();
+            }
+        });
+
+        if (filterSelect) {
+            filterSelect.addEventListener('change', () => {
+                applyPipeline();
+            });
+        }
+
+        if (sortSelect) {
+            sortSelect.addEventListener('change', () => {
+                applyPipeline();
+            });
+        }
+
+        // Mettre à jour le placeholder au chargement
+        updateSearchPlaceholder();
+
+        // Écouter les changements de langue si nécessaire
+        const observer = new MutationObserver(updateSearchPlaceholder);
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['lang', 'data-lang']
+        });
+
+        // Init état
+        applyPipeline();
+    }
 });

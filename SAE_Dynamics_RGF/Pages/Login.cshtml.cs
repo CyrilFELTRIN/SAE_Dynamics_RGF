@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Http; // pour HttpContext.Session
 using SAE_Dynamics_RGF.Data;
+using System;
 
 namespace SAE_Dynamics_RGF.Pages
 {
@@ -15,7 +16,30 @@ namespace SAE_Dynamics_RGF.Pages
         [BindProperty]
         public string Crda6Password { get; set; }
 
+        [BindProperty]
+        public string RegisterFirstName { get; set; }
+
+        [BindProperty]
+        public string RegisterLastName { get; set; }
+
+        [BindProperty]
+        public string RegisterEmail { get; set; }
+
+        [BindProperty]
+        public string RegisterIdentifiant { get; set; }
+
+        [BindProperty]
+        public string RegisterPassword { get; set; }
+
+        [BindProperty]
+        public DateTime? RegisterBirthDate { get; set; }
+
+        [BindProperty]
+        public string RegisterMobilePhone { get; set; }
+
         public string ErrorMessage { get; set; }
+
+        public string RegisterErrorMessage { get; set; }
 
         public LoginModel(DataverseService dataverseService)
         {
@@ -44,6 +68,29 @@ namespace SAE_Dynamics_RGF.Pages
                 ErrorMessage = "Identifiant ou mot de passe incorrect.";
                 return Page();
             }
+        }
+
+        public IActionResult OnPostRegister()
+        {
+            var (contact, error) = _dataverseService.RegisterContact(
+                RegisterFirstName,
+                RegisterLastName,
+                RegisterEmail,
+                RegisterIdentifiant,
+                RegisterPassword,
+                RegisterBirthDate,
+                RegisterMobilePhone);
+
+            if (contact == null)
+            {
+                RegisterErrorMessage = string.IsNullOrWhiteSpace(error) ? "Inscription impossible." : error;
+                return Page();
+            }
+
+            HttpContext.Session.SetString("IsLoggedIn", "true");
+            HttpContext.Session.SetString("UserName", contact.FullName);
+            HttpContext.Session.SetString("ContactId", contact.Id.ToString());
+            return RedirectToPage("/Products");
         }
     }
 }

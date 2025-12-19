@@ -701,6 +701,100 @@ namespace SAE_Dynamics_RGF.Data
             return orders;
         }
 
+        public (Contact Contact, string ErrorMessage) RegisterContact(
+            string firstName,
+            string lastName,
+            string email,
+            string identifiant,
+            string motDePasse,
+            DateTime? dateAnniversaire,
+            string mobilePhone)
+        {
+            if (!IsConnected) return (null, "Connexion Dataverse indisponible.");
+
+            firstName = (firstName ?? string.Empty).Trim();
+            lastName = (lastName ?? string.Empty).Trim();
+            email = (email ?? string.Empty).Trim();
+            identifiant = (identifiant ?? string.Empty).Trim();
+            motDePasse = (motDePasse ?? string.Empty).Trim();
+            mobilePhone = (mobilePhone ?? string.Empty).Trim();
+
+            if (string.IsNullOrWhiteSpace(firstName) ||
+                string.IsNullOrWhiteSpace(lastName) ||
+                string.IsNullOrWhiteSpace(email) ||
+                string.IsNullOrWhiteSpace(identifiant) ||
+                string.IsNullOrWhiteSpace(motDePasse))
+            {
+                return (null, "Veuillez remplir tous les champs obligatoires.");
+            }
+
+            try
+            {
+                var duplicateQuery = new QueryExpression("contact")
+                {
+                    ColumnSet = new ColumnSet("emailaddress1", "crda6_identifiant"),
+                    TopCount = 5,
+                    Criteria = new FilterExpression
+                    {
+                        FilterOperator = LogicalOperator.Or,
+                        Conditions =
+                        {
+                            new ConditionExpression("emailaddress1", ConditionOperator.Equal, email),
+                            new ConditionExpression("crda6_identifiant", ConditionOperator.Equal, identifiant)
+                        }
+                    }
+                };
+
+                var dupResult = _serviceClient.RetrieveMultiple(duplicateQuery);
+                var duplicates = dupResult?.Entities?.ToList() ?? new List<Entity>();
+
+                var emailTaken = duplicates.Any(e => (e.GetAttributeValue<string>("emailaddress1") ?? string.Empty)
+                    .Equals(email, StringComparison.OrdinalIgnoreCase));
+                if (emailTaken) return (null, "Cet email est déjà utilisé.");
+
+                var idTaken = duplicates.Any(e => (e.GetAttributeValue<string>("crda6_identifiant") ?? string.Empty)
+                    .Equals(identifiant, StringComparison.OrdinalIgnoreCase));
+                if (idTaken) return (null, "Cet identifiant est déjà utilisé.");
+
+                var newContact = new Entity("contact")
+                {
+                    ["firstname"] = firstName,
+                    ["lastname"] = lastName,
+                    ["emailaddress1"] = email,
+                    ["crda6_identifiant"] = identifiant,
+                    ["crda6_motdepasse"] = motDePasse
+                };
+
+                if (dateAnniversaire.HasValue)
+                {
+                    newContact["crda6_datedanniversaire"] = dateAnniversaire.Value.Date;
+                }
+
+                if (!string.IsNullOrWhiteSpace(mobilePhone))
+                {
+                    newContact["mobilephone"] = mobilePhone;
+                }
+
+                var contactId = _serviceClient.Create(newContact);
+                if (contactId == Guid.Empty)
+                {
+                    return (null, "Erreur lors de la création du compte.");
+                }
+
+                return (new Contact
+                {
+                    Id = contactId,
+                    FullName = (firstName + " " + lastName).Trim(),
+                    Identifiant = identifiant
+                }, null);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erreur lors de l'inscription (contact) : " + ex.Message);
+                return (null, "Erreur lors de l'inscription.");
+            }
+        }
+
         public Contact AuthenticateContact(string identifiant, string motDePasse)
         {
             if (!IsConnected) return null;
