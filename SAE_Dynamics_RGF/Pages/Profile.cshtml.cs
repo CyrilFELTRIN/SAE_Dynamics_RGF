@@ -21,6 +21,7 @@ namespace SAE_Dynamics_RGF.Pages
         public List<Quote> Quotes { get; set; } = new();
         public List<SalesOrder> SalesOrders { get; set; } = new();
         public List<SalesOrder> Invoices { get; set; } = new();
+        public List<Opportunity> Opportunities { get; set; } = new();
 
         public ProfileModel(DataverseService dataverseService)
         {
@@ -47,6 +48,7 @@ namespace SAE_Dynamics_RGF.Pages
             Quotes = _dataverseService.GetQuotesForContact(contactId);
             SalesOrders = _dataverseService.GetSalesOrdersForContact(contactId);
             Invoices = SalesOrders.Where(o => o.StatusCode == 4).ToList();
+            Opportunities = _dataverseService.GetOpportunitiesForContact(contactId);
 
             return Page();
         }
@@ -58,6 +60,7 @@ namespace SAE_Dynamics_RGF.Pages
             {
                 "info" => "info",
                 "quotes" => "quotes",
+                "requests" => "requests",
                 "orders" => "orders",
                 "invoices" => "invoices",
                 _ => "info"

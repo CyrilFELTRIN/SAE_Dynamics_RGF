@@ -1,0 +1,88 @@
+@page
+@model SAE_Dynamics_RGF.Pages.RequestsModel
+@{
+    ViewData["Title"] = "Mes demandes";
+}
+
+<div data-rolix-scope>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center gap-2">
+            <a asp-page="/Profile" asp-route-tab="requests" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left me-1"></i>
+                <span data-lang-fr="Retour au profil" data-lang-en="Back to profile">Retour au profil</span>
+            </a>
+            <h2 class="mb-0" data-lang-fr="Mes demandes" data-lang-en="My requests">@ViewData["Title"]</h2>
+        </div>
+    </div>
+
+@if (!Model.Opportunities.Any())
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5">
+            <div class="text-muted mb-3">
+                <i class="fas fa-briefcase fa-3x mb-3"></i>
+                <h4 class="h5" data-lang-fr="Aucune demande trouvée" data-lang-en="No requests found">Aucune demande trouvée</h4>
+                <p class="mb-0" data-lang-fr="Vous pouvez demander un devis depuis une fiche produit" data-lang-en="You can request a quote from a product page">
+                    Vous pouvez demander un devis depuis une fiche produit
+                </p>
+            </div>
+            <a href="/Products" class="btn btn-primary mt-3" data-lang-fr="Voir les produits" data-lang-en="Browse products">
+                <i class="fas fa-box-open me-2"></i>
+                <span data-lang-fr="Voir les produits" data-lang-en="Browse products">Voir les produits</span>
+            </a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-header border-bottom">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-6">
+                    <div class="input-group rounded-3">
+                        <span class="input-group-text bg-transparent border-end-0"><i class="fas fa-search text-muted"></i></span>
+                        <input type="text" class="form-control border-start-0 bg-transparent" placeholder="Rechercher une demande..." data-lang-fr-placeholder="Rechercher une demande..." data-lang-en-placeholder="Search a request..." data-rolix-search-for="rolix-requests-table">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" data-rolix-filter-for="rolix-requests-table">
+                        <option value="all" data-lang-fr="Tous les statuts" data-lang-en="All statuses">Tous les statuts</option>
+                        <option value="open" data-lang-fr="Ouvert" data-lang-en="Open">Ouvert</option>
+                        <option value="closed" data-lang-fr="Fermé" data-lang-en="Closed">Fermé</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="d-flex align-items-center justify-content-end">
+                        <a href="/Products" class="btn btn-outline-secondary" type="button">
+                            <i class="fas fa-plus"></i>
+                            <span class="d-none d-md-inline ms-1" data-lang-fr="Nouvelle demande" data-lang-en="New request">Nouvelle demande</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table id="rolix-requests-table" class="table table-hover align-middle mb-0" data-rolix-table data-rolix-page-size="10">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="px-4" data-lang-fr="DEMANDE" data-lang-en="REQUEST">DEMANDE</th>
+                            <th class="text-center" data-lang-fr="DATE" data-lang-en="DATE">DATE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var opp in Model.Opportunities)
+                        {
+                            <tr>
+                                <td class="px-4 fw-semibold">@opp.Name</td>
+                                <td class="text-center" data-sort="@opp.CreatedOn.ToString("yyyy-MM-dd")">@opp.CreatedOn.ToString("dd/MM/yyyy")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+</div>

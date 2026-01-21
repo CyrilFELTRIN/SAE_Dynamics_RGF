@@ -6,7 +6,13 @@
 
 <div data-rolix-scope>
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0" data-lang-fr="Mes commandes" data-lang-en="My orders">@ViewData["Title"]</h2>
+        <div class="d-flex align-items-center gap-2">
+            <a asp-page="/Profile" asp-route-tab="orders" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left me-1"></i>
+                <span data-lang-fr="Retour au profil" data-lang-en="Back to profile">Retour au profil</span>
+            </a>
+            <h2 class="mb-0" data-lang-fr="Mes commandes" data-lang-en="My orders">@ViewData["Title"]</h2>
+        </div>
         <div>
             <button class="btn btn-primary" data-lang-fr="Nouvelle commande" data-lang-en="New order">
                 <i class="fas fa-plus me-2"></i>

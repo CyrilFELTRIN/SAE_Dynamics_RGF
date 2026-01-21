@@ -21,19 +21,23 @@
 
                     <div class="list-group list-group-flush">
                         <a asp-page="/Profile" asp-route-tab="info" class="list-group-item list-group-item-action @(Model.ActiveTab == "info" ? "active" : "")">
-                            <i class="fas fa-id-card me-2"></i>
+                            <i class="fas fa-id-card fa-fw me-2"></i>
                             <span data-lang-fr="Informations" data-lang-en="Profile">Informations</span>
                         </a>
+                        <a asp-page="/Profile" asp-route-tab="requests" class="list-group-item list-group-item-action @(Model.ActiveTab == "requests" ? "active" : "")">
+                            <i class="fas fa-briefcase fa-fw me-2"></i>
+                            <span data-lang-fr="Mes demandes" data-lang-en="My requests">Mes demandes</span>
+                        </a>
                         <a asp-page="/Profile" asp-route-tab="quotes" class="list-group-item list-group-item-action @(Model.ActiveTab == "quotes" ? "active" : "")">
-                            <i class="fas fa-file-invoice-dollar me-2"></i>
+                            <i class="fas fa-file-invoice-dollar fa-fw me-2"></i>
                             <span data-lang-fr="Devis" data-lang-en="Quotes">Devis</span>
                         </a>
                         <a asp-page="/Profile" asp-route-tab="orders" class="list-group-item list-group-item-action @(Model.ActiveTab == "orders" ? "active" : "")">
-                            <i class="fas fa-shopping-cart me-2"></i>
+                            <i class="fas fa-shopping-cart fa-fw me-2"></i>
                             <span data-lang-fr="Commandes" data-lang-en="Orders">Commandes</span>
                         </a>
                         <a asp-page="/Profile" asp-route-tab="invoices" class="list-group-item list-group-item-action @(Model.ActiveTab == "invoices" ? "active" : "")">
-                            <i class="fas fa-receipt me-2"></i>
+                            <i class="fas fa-receipt fa-fw me-2"></i>
                             <span data-lang-fr="Factures" data-lang-en="Invoices">Factures</span>
                         </a>
                     </div>
@@ -95,6 +99,49 @@
                                                 <td>@q.CreatedOn.ToString("dd/MM/yyyy")</td>
                                                 <td class="text-end fw-semibold">@q.TotalAmount.ToString("N2") €</td>
                                                 <td>@Model.GetQuoteStatusText(q)</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            else if (Model.ActiveTab == "requests")
+            {
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h2 class="h4 mb-0" data-lang-fr="Mes demandes" data-lang-en="My requests">Mes demandes</h2>
+                            <a asp-page="/Requests" class="btn btn-outline-primary btn-sm">
+                                <span data-lang-fr="Voir la page complète" data-lang-en="Open full page">Voir la page complète</span>
+                            </a>
+                        </div>
+
+                        @if (!Model.Opportunities.Any())
+                        {
+                            <div class="text-center text-muted py-5">
+                                <i class="fas fa-briefcase fa-2x mb-3"></i>
+                                <div data-lang-fr="Aucune demande" data-lang-en="No requests">Aucune demande</div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th data-lang-fr="Demande" data-lang-en="Request">Demande</th>
+                                            <th data-lang-fr="Date" data-lang-en="Date">Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var opp in Model.Opportunities)
+                                        {
+                                            <tr>
+                                                <td class="fw-semibold">@opp.Name</td>
+                                                <td>@opp.CreatedOn.ToString("dd/MM/yyyy")</td>
                                             </tr>
                                         }
                                     </tbody>

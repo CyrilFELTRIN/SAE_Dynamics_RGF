@@ -834,6 +834,185 @@ namespace SAE_Dynamics_RGF.Data
             }
         }
 
+        public List<CurrencyOption> GetCurrencies()
+        {
+            var currencies = new List<CurrencyOption>();
+            if (!IsConnected) return currencies;
+
+            try
+            {
+                var query = new QueryExpression("transactioncurrency")
+                {
+                    ColumnSet = new ColumnSet("currencyname", "isocurrencycode")
+                };
+
+                var result = _serviceClient.RetrieveMultiple(query);
+                foreach (var entity in result.Entities)
+                {
+                    currencies.Add(new CurrencyOption
+                    {
+                        Id = entity.Id,
+                        Name = entity.GetAttributeValue<string>("currencyname") ?? entity.GetAttributeValue<string>("isocurrencycode") ?? entity.Id.ToString(),
+                        IsoCode = NormalizeCurrencyCode(entity.GetAttributeValue<string>("isocurrencycode")) ?? entity.GetAttributeValue<string>("isocurrencycode")
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erreur lors de la récupération des devises : " + ex.Message);
+            }
+
+            return currencies;
+        }
+
+        public (Guid? OpportunityId, string ErrorMessage) CreateOpportunityWithProduct(
+            Guid contactId,
+            Guid productId,
+            Guid currencyId,
+            string name,
+            string description)
+        {
+            if (!IsConnected) return (null, "Connexion Dataverse indisponible.");
+            if (contactId == Guid.Empty) return (null, "Contact invalide.");
+            if (productId == Guid.Empty) return (null, "Produit invalide.");
+            if (currencyId == Guid.Empty) return (null, "Devise invalide.");
+            if (string.IsNullOrWhiteSpace(name)) return (null, "Le champ rubrique est obligatoire.");
+
+            try
+            {
+                Guid? priceLevelId = null;
+                try
+                {
+                    var priceListQuery = new QueryExpression("pricelevel")
+                    {
+                        ColumnSet = new ColumnSet("pricelevelid", "name"),
+                        TopCount = 1,
+                        Criteria = new FilterExpression
+                        {
+                            Conditions =
+                            {
+                                new ConditionExpression("transactioncurrencyid", ConditionOperator.Equal, currencyId)
+                            }
+                        }
+                    };
+
+                    var plResult = _serviceClient.RetrieveMultiple(priceListQuery);
+                    var pl = plResult?.Entities?.FirstOrDefault();
+                    if (pl != null) priceLevelId = pl.Id;
+                }
+                catch
+                {
+                    priceLevelId = null;
+                }
+
+                var opportunity = new Entity("opportunity")
+                {
+                    ["name"] = name.Trim(),
+                    ["description"] = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
+                    ["transactioncurrencyid"] = new EntityReference("transactioncurrency", currencyId),
+                    ["parentcontactid"] = new EntityReference("contact", contactId),
+                    ["customerid"] = new EntityReference("contact", contactId),
+                    ["crda6_depuislesiteweb"] = true
+                };
+
+                if (priceLevelId.HasValue)
+                {
+                    opportunity["pricelevelid"] = new EntityReference("pricelevel", priceLevelId.Value);
+                }
+
+                var opportunityId = _serviceClient.Create(opportunity);
+                if (opportunityId == Guid.Empty)
+                {
+                    return (null, "Erreur lors de la création de l'opportunité.");
+                }
+
+                EntityReference unitRef = null;
+                try
+                {
+                    var product = _serviceClient.Retrieve("product", productId, new ColumnSet("defaultuomid"));
+                    unitRef = product?.GetAttributeValue<EntityReference>("defaultuomid");
+                }
+                catch
+                {
+                    unitRef = null;
+                }
+
+                if (unitRef == null || unitRef.Id == Guid.Empty)
+                {
+                    return (opportunityId, "Impossible de déterminer l'unité du produit (defaultuomid).");
+                }
+
+                var opportunityProduct = new Entity("opportunityproduct")
+                {
+                    ["opportunityid"] = new EntityReference("opportunity", opportunityId),
+                    ["productid"] = new EntityReference("product", productId),
+                    ["uomid"] = unitRef,
+                    ["quantity"] = 1m,
+                    ["ispriceoverridden"] = false,
+                    ["isproductoverridden"] = false
+                };
+
+                var oppProdId = _serviceClient.Create(opportunityProduct);
+                if (oppProdId == Guid.Empty)
+                {
+                    return (opportunityId, "L'opportunité a été créée mais l'ajout du produit a échoué.");
+                }
+
+                return (opportunityId, null);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erreur lors de la création de l'opportunité avec produit : " + ex.Message);
+                return (null, "Erreur lors de la création de la demande.");
+            }
+        }
+
+        public List<Opportunity> GetOpportunitiesForContact(Guid contactId)
+        {
+            var opportunities = new List<Opportunity>();
+            if (!IsConnected) return opportunities;
+            if (contactId == Guid.Empty) return opportunities;
+
+            try
+            {
+                var query = new QueryExpression("opportunity")
+                {
+                    ColumnSet = new ColumnSet("name", "statecode", "statuscode", "createdon", "estimatedvalue"),
+                    Criteria = new FilterExpression
+                    {
+                        Conditions =
+                        {
+                            new ConditionExpression("parentcontactid", ConditionOperator.Equal, contactId)
+                        }
+                    }
+                };
+
+                var result = _serviceClient.RetrieveMultiple(query);
+                foreach (var entity in result.Entities)
+                {
+                    opportunities.Add(new Opportunity
+                    {
+                        Id = entity.Id,
+                        Name = entity.GetAttributeValue<string>("name") ?? string.Empty,
+                        StateCode = entity.Contains("statecode") ? entity.FormattedValues["statecode"] : "",
+                        StatusCode = entity.GetAttributeValue<OptionSetValue>("statuscode")?.Value,
+                        CreatedOn = entity.Contains("createdon") ? entity.GetAttributeValue<DateTime>("createdon") : DateTime.MinValue,
+                        EstimatedValue = entity.GetAttributeValue<Money>("estimatedvalue")?.Value ?? 0m
+                    });
+                }
+
+                opportunities = opportunities
+                    .OrderByDescending(o => o.CreatedOn)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erreur lors de la récupération des opportunités (filtrées) : " + ex.Message);
+            }
+
+            return opportunities;
+        }
+
         public void Dispose()
         {
             _serviceClient?.Dispose();
@@ -882,6 +1061,23 @@ namespace SAE_Dynamics_RGF.Data
             public int? StatusCode { get; set; }
             public decimal TotalAmount { get; set; }
             public DateTime CreatedOn { get; set; }
+        }
+
+        public class CurrencyOption
+        {
+            public Guid Id { get; set; }
+            public string Name { get; set; }
+            public string IsoCode { get; set; }
+        }
+
+        public class Opportunity
+        {
+            public Guid Id { get; set; }
+            public string Name { get; set; }
+            public string StateCode { get; set; }
+            public int? StatusCode { get; set; }
+            public DateTime CreatedOn { get; set; }
+            public decimal EstimatedValue { get; set; }
         }
     }
 }

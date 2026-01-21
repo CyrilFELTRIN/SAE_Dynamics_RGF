@@ -1,5 +1,6 @@
 ﻿@page
 @model SAE_Dynamics_RGF.Pages.ProductDetailModel
+@using Microsoft.AspNetCore.Http
 @{ 
     ViewData["Title"] = "Détails du produit";
 }
@@ -64,6 +65,13 @@
 
                     <div class="card border-0 shadow-sm rounded-4">
                         <div class="card-body p-4">
+                            @if (!string.IsNullOrWhiteSpace(Model.QuoteErrorMessage))
+                            {
+                                <div class="alert alert-danger mb-3" role="alert">
+                                    @Model.QuoteErrorMessage
+                                </div>
+                            }
+
                             <div class="row g-3">
                                 <div class="col-12">
                                     <div class="text-muted small" data-lang-fr="Numéro du produit" data-lang-en="Product number">Numéro du produit</div>
@@ -80,12 +88,63 @@
                                     <i class="fas fa-arrow-left me-2"></i>
                                     <span data-lang-fr="Retour au catalogue" data-lang-en="Back to catalog">Retour au catalogue</span>
                                 </a>
-                                <a href="#" class="btn btn-primary w-100 w-sm-auto">
-                                    <i class="fas fa-cart-shopping me-2"></i>
-                                    <span data-lang-fr="Demander un devis" data-lang-en="Request a quote">Demander un devis</span>
-                                </a>
+                                @if (HttpContext.Session.GetString("IsLoggedIn") == "true")
+                                {
+                                    <button type="button" class="btn btn-primary w-100 w-sm-auto" data-bs-toggle="modal" data-bs-target="#requestQuoteModal">
+                                        <i class="fas fa-cart-shopping me-2"></i>
+                                        <span data-lang-fr="Demander un devis" data-lang-en="Request a quote">Demander un devis</span>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <a class="btn btn-primary w-100 w-sm-auto" asp-page="/Login" asp-route-ReturnUrl="@($"{HttpContext.Request.Path}{HttpContext.Request.QueryString}")">
+                                        <i class="fas fa-cart-shopping me-2"></i>
+                                        <span data-lang-fr="Demander un devis" data-lang-en="Request a quote">Demander un devis</span>
+                                    </a>
+                                }
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="requestQuoteModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" data-lang-fr="Demander un devis" data-lang-en="Request a quote">Demander un devis</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form method="post" asp-page-handler="RequestQuote">
+                            <div class="modal-body">
+                                <input type="hidden" asp-for="ProductNumber" />
+
+                                <div class="mb-3">
+                                    <label class="form-label" data-lang-fr="Rubrique" data-lang-en="Subject">Rubrique</label>
+                                    <input class="form-control" asp-for="QuoteRubrique" required />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label" data-lang-fr="Description" data-lang-en="Description">Description</label>
+                                    <textarea class="form-control" asp-for="QuoteDescription" rows="3"></textarea>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label" data-lang-fr="Devise" data-lang-en="Currency">Devise</label>
+                                    <select class="form-select" asp-for="CurrencyId" required>
+                                        <option value="" data-lang-fr="Sélectionner" data-lang-en="Select">Sélectionner</option>
+                                        @foreach (var c in Model.Currencies)
+                                        {
+                                            <option value="@c.Id">@c.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" data-lang-fr="Annuler" data-lang-en="Cancel">Annuler</button>
+                                <button type="submit" class="btn btn-primary" data-lang-fr="Envoyer" data-lang-en="Submit">Envoyer</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>

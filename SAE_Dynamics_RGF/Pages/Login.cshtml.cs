@@ -10,6 +10,9 @@ namespace SAE_Dynamics_RGF.Pages
     {
         private readonly DataverseService _dataverseService;
 
+        [BindProperty(SupportsGet = true)]
+        public string ReturnUrl { get; set; }
+
         [BindProperty]
         public string Crda6Id { get; set; }
 
@@ -59,7 +62,13 @@ namespace SAE_Dynamics_RGF.Pages
                 // ✅ Enregistre que l'utilisateur est connecté
                 HttpContext.Session.SetString("IsLoggedIn", "true");
                 HttpContext.Session.SetString("UserName", contact.FullName);
+                HttpContext.Session.SetString("UserIdentifiant", contact.Identifiant ?? Crda6Id);
                 HttpContext.Session.SetString("ContactId", contact.Id.ToString());
+
+                if (!string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))
+                {
+                    return Redirect(ReturnUrl);
+                }
 
                 return RedirectToPage("/Products");
             }
@@ -89,7 +98,14 @@ namespace SAE_Dynamics_RGF.Pages
 
             HttpContext.Session.SetString("IsLoggedIn", "true");
             HttpContext.Session.SetString("UserName", contact.FullName);
+            HttpContext.Session.SetString("UserIdentifiant", contact.Identifiant ?? RegisterIdentifiant);
             HttpContext.Session.SetString("ContactId", contact.Id.ToString());
+
+            if (!string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))
+            {
+                return Redirect(ReturnUrl);
+            }
+
             return RedirectToPage("/Products");
         }
     }

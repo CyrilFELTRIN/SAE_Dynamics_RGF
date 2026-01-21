@@ -10,6 +10,8 @@
             <form class="auth-form" method="post" asp-page-handler="Register">
                 <h1 class="auth-title" data-lang-fr="Créer un compte" data-lang-en="Create Account">Créer un compte</h1>
 
+                <input type="hidden" asp-for="ReturnUrl" />
+
                 <div class="auth-icons" aria-hidden="true">
                     <span class="auth-icon">
                         <i class="fab fa-facebook-f"></i>
@@ -43,6 +45,8 @@
         <div class="auth-pane auth-pane--login" id="authLoginPane">
             <form class="auth-form" method="post">
                 <h1 class="auth-title" data-lang-fr="Connexion" data-lang-en="Sign in">Connexion</h1>
+
+                <input type="hidden" asp-for="ReturnUrl" />
 
                 <div class="auth-icons" aria-hidden="true">
                     <span class="auth-icon">
