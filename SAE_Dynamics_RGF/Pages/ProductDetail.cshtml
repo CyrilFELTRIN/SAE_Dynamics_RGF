@@ -148,6 +148,197 @@
                     </div>
                 </div>
             </div>
+
+            <div class="mt-5">
+                <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+                    <h2 class="h4 fw-bold mb-0" data-lang-fr="Avis" data-lang-en="Reviews">Avis</h2>
+
+                    @if (HttpContext.Session.GetString("IsLoggedIn") == "true")
+                    {
+                        if (Model.HasUserReviewed)
+                        {
+                            <div class="alert alert-info mb-0 py-1 px-3" role="alert">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <span data-lang-fr="Vous avez déjà donné votre avis sur ce produit" data-lang-en="You have already reviewed this product">Vous avez déjà donné votre avis sur ce produit</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addReviewModal">
+                                <i class="fas fa-pen me-2"></i>
+                                <span data-lang-fr="Ajouter un avis" data-lang-en="Add a review">Ajouter un avis</span>
+                            </button>
+                        }
+                    }
+                    else
+                    {
+                        <a class="btn btn-outline-primary" asp-page="/Login" asp-route-ReturnUrl="@($"{HttpContext.Request.Path}{HttpContext.Request.QueryString}")">
+                            <i class="fas fa-pen me-2"></i>
+                            <span data-lang-fr="Ajouter un avis" data-lang-en="Add a review">Ajouter un avis</span>
+                        </a>
+                    }
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Model.ReviewErrorMessage))
+                {
+                    <div class="alert alert-danger" role="alert">
+                        @Model.ReviewErrorMessage
+                    </div>
+                }
+
+                @if (Model.AvisList == null || Model.AvisList.Count == 0)
+                {
+                    <div class="text-muted" data-lang-fr="Aucun avis pour ce produit." data-lang-en="No reviews for this product.">Aucun avis pour ce produit.</div>
+                }
+                else
+                {
+                    <div class="row row-cols-1 row-cols-md-2 g-4">
+                        @foreach (var a in Model.AvisList)
+                        {
+                            var percent = a.Note.HasValue ? a.Note.Value * 10 : 0;
+                            <div class="col">
+                                <div class="card h-100 border-0 shadow-sm rounded-4">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-start justify-content-between gap-3">
+                                            <div class="flex-grow-1">
+                                                <div class="fw-semibold text-truncate">@a.Title</div>
+                                                @if (!string.IsNullOrWhiteSpace(a.CreatedByName) || a.CreatedOn.HasValue)
+                                                {
+                                                    <div class="text-muted small">
+                                                        @if (!string.IsNullOrWhiteSpace(a.CreatedByName))
+                                                        {
+                                                            <span>@a.CreatedByName</span>
+                                                        }
+                                                        @if (!string.IsNullOrWhiteSpace(a.CreatedByName) && a.CreatedOn.HasValue)
+                                                        {
+                                                            <span> • </span>
+                                                        }
+                                                        @if (a.CreatedOn.HasValue)
+                                                        {
+                                                            <span>@a.CreatedOn.Value.ToString("dd/MM/yyyy")</span>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+
+                                            <div class="flex-shrink-0">
+                                                <div class="stars">
+                                                    <div class="stars-filled" style="width:@percent%;"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        @if (!string.IsNullOrWhiteSpace(a.Description))
+                                        {
+                                            <div class="mt-3 text-muted">@a.Description</div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="modal fade" id="addReviewModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" data-lang-fr="Ajouter un avis" data-lang-en="Add a review">Ajouter un avis</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form method="post" asp-page-handler="AddReview">
+                            <div class="modal-body">
+                                <input type="hidden" asp-for="ProductNumber" />
+
+                                <div class="mb-3">
+                                    <label class="form-label" data-lang-fr="Titre" data-lang-en="Title">Titre</label>
+                                    <input class="form-control" asp-for="ReviewTitle" required />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label" data-lang-fr="Description" data-lang-en="Description">Description</label>
+                                    <textarea class="form-control" asp-for="ReviewDescription" rows="3"></textarea>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label" data-lang-fr="Note (0 à 10)" data-lang-en="Rating (0 to 10)">Note (0 à 10)</label>
+                                    <input class="form-control" asp-for="ReviewNote" type="number" min="0" max="10" step="1" required />
+                                    <div class="mt-2">
+                                        <div class="stars">
+                                            <div class="stars-filled" id="reviewStarsFilled" style="width:0%;"></div>
+                                        </div>
+                                        <div class="small text-danger" id="reviewStarsError"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" data-lang-fr="Annuler" data-lang-en="Cancel">Annuler</button>
+                                <button type="submit" class="btn btn-primary" data-lang-fr="Envoyer" data-lang-en="Submit">Envoyer</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
         }
     </div>
 </section>
+
+<style>
+    .stars {
+        position: relative;
+        display: inline-block;
+        font-size: 1.2rem;
+        color: #ccc;
+        line-height: 1;
+    }
+
+    .stars::before {
+        content: "★★★★★";
+    }
+
+    .stars .stars-filled {
+        position: absolute;
+        top: 0;
+        left: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        color: gold;
+    }
+
+    .stars .stars-filled::before {
+        content: "★★★★★";
+    }
+</style>
+
+<script>
+    (function () {
+        var noteInput = document.getElementById('ReviewNote');
+        if (!noteInput) return;
+
+        var starsFilled = document.getElementById('reviewStarsFilled');
+        var error = document.getElementById('reviewStarsError');
+
+        function updateStars() {
+            var value = parseInt(noteInput.value, 10);
+            error.textContent = '';
+
+            if (isNaN(value)) {
+                starsFilled.style.width = '0%';
+                return;
+            }
+
+            if (value < 0 || value > 10) {
+                error.textContent = 'Veuillez entrer un entier entre 0 et 10.';
+                starsFilled.style.width = '0%';
+                return;
+            }
+
+            var pourcentage = (value / 10) * 100;
+            starsFilled.style.width = pourcentage + '%';
+        }
+
+        noteInput.addEventListener('input', updateStars);
+        updateStars();
+    })();
+</script>

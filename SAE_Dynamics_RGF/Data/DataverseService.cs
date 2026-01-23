@@ -1013,6 +1013,96 @@ namespace SAE_Dynamics_RGF.Data
             return opportunities;
         }
 
+        public List<Avis> GetAvisByProduct(Guid productId)
+        {
+            var avisList = new List<Avis>();
+            if (!IsConnected) return avisList;
+            if (productId == Guid.Empty) return avisList;
+
+            try
+            {
+                var query = new QueryExpression("crda6_avis")
+                {
+                    ColumnSet = new ColumnSet("crda6_name", "crda6_description", "crda6_note", "createdon", "crda6_client", "crda6_produit"),
+                    Criteria = new FilterExpression
+                    {
+                        Conditions =
+                        {
+                            new ConditionExpression("crda6_produit", ConditionOperator.Equal, productId)
+                        }
+                    }
+                };
+
+                query.Orders.Add(new OrderExpression("createdon", OrderType.Descending));
+
+                var result = _serviceClient.RetrieveMultiple(query);
+                foreach (var entity in result.Entities)
+                {
+                    var note = entity.GetAttributeValue<int?>("crda6_note");
+                    if (note.HasValue && (note.Value < 0 || note.Value > 10)) note = null;
+
+                    avisList.Add(new Avis
+                    {
+                        Id = entity.Id,
+                        Title = entity.GetAttributeValue<string>("crda6_name") ?? string.Empty,
+                        Description = entity.GetAttributeValue<string>("crda6_description") ?? string.Empty,
+                        Note = note,
+                        CreatedOn = entity.GetAttributeValue<DateTime?>("createdon"),
+                        CreatedByName = entity.Contains("crda6_client") ? entity.GetAttributeValue<EntityReference>("crda6_client")?.Name : null
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erreur lors de la récupération des avis : " + ex.Message);
+            }
+
+            return avisList;
+        }
+
+        public (Guid? AvisId, string ErrorMessage) CreateAvis(
+            Guid contactId,
+            Guid productId,
+            string title,
+            string description,
+            int note)
+        {
+            if (!IsConnected) return (null, "Connexion Dataverse indisponible.");
+            if (contactId == Guid.Empty) return (null, "Contact invalide.");
+            if (productId == Guid.Empty) return (null, "Produit invalide.");
+
+            title = (title ?? string.Empty).Trim();
+            description = (description ?? string.Empty).Trim();
+
+            if (string.IsNullOrWhiteSpace(title)) return (null, "Le titre est obligatoire.");
+            if (note < 0 || note > 10) return (null, "La note doit être un entier entre 0 et 10.");
+
+            try
+            {
+                var avis = new Entity("crda6_avis")
+                {
+                    ["crda6_name"] = title,
+                    ["crda6_description"] = string.IsNullOrWhiteSpace(description) ? null : description,
+                    ["crda6_note"] = note,
+                    ["crda6_produit"] = new EntityReference("product", productId),
+                    ["crda6_client"] = new EntityReference("contact", contactId)
+                };
+
+                var avisId = _serviceClient.Create(avis);
+                if (avisId == Guid.Empty)
+                {
+                    return (null, "Erreur lors de la création de l'avis.");
+                }
+
+                return (avisId, null);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erreur lors de la création de l'avis : " + ex.Message);
+                return (null, "Erreur lors de la création de l'avis.");
+            }
+        }
+
         public void Dispose()
         {
             _serviceClient?.Dispose();
@@ -1078,6 +1168,47 @@ namespace SAE_Dynamics_RGF.Data
             public int? StatusCode { get; set; }
             public DateTime CreatedOn { get; set; }
             public decimal EstimatedValue { get; set; }
+        }
+
+        public bool HasUserReviewedProduct(Guid contactId, Guid productId)
+        {
+            if (!IsConnected || contactId == Guid.Empty || productId == Guid.Empty)
+                return false;
+
+            try
+            {
+                var query = new QueryExpression("crda6_avis")
+                {
+                    ColumnSet = new ColumnSet("crda6_avisid"),
+                    Criteria = new FilterExpression
+                    {
+                        Conditions =
+                        {
+                            new ConditionExpression("crda6_client", ConditionOperator.Equal, contactId),
+                            new ConditionExpression("crda6_produit", ConditionOperator.Equal, productId)
+                        }
+                    },
+                    TopCount = 1
+                };
+
+                var result = _serviceClient.RetrieveMultiple(query);
+                return result.Entities.Count > 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur lors de la vérification de l'existence d'un avis : {ex.Message}");
+                return false;
+            }
+        }
+
+        public class Avis
+        {
+            public Guid Id { get; set; }
+            public string Title { get; set; }
+            public string Description { get; set; }
+            public int? Note { get; set; }
+            public DateTime? CreatedOn { get; set; }
+            public string CreatedByName { get; set; }
         }
     }
 }

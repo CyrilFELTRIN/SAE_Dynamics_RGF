@@ -15,7 +15,69 @@ document.addEventListener('DOMContentLoaded', function () {
         { from: '#1861ac', to: '#7c3aed' }
     ];
 
-    const normalize = (v) => (v || '').toLowerCase();
+    // Fonction pour normaliser une chaîne (suppression des accents, passage en minuscules)
+    function normalize(str) {
+        return (str || '')
+            .toString()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Supprime les accents
+            .toLowerCase()
+            .replace(/[^a-z0-9\s]/g, ''); // Supprime la ponctuation
+    }
+
+    // Fonction de recherche floue avec distance de Levenshtein
+    function fuzzyMatch(str, pattern) {
+        // Si le motif est court, vérifie simplement l'inclusion
+        if (pattern.length <= 3) {
+            return normalize(str).includes(normalize(pattern));
+        }
+
+        // Pour les motifs plus longs, utilise la distance de Levenshtein
+        const s = normalize(str);
+        const p = normalize(pattern);
+
+        // Si la chaîne contient le motif, c'est un bon match
+        if (s.includes(p)) return true;
+
+        // Si le motif est court, on est plus tolérant sur la distance
+        const maxDistance = p.length <= 4 ? 1 : Math.max(1, Math.floor(p.length * 0.25));
+
+        // Vérifie si on peut trouver le motif avec une distance de Levenshtein acceptable
+        for (let i = 0; i <= s.length - p.length + maxDistance; i++) {
+            const sub = s.substring(i, Math.min(i + p.length + maxDistance, s.length));
+            if (levenshteinDistance(sub, p) <= maxDistance) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Calcul de la distance de Levenshtein
+    function levenshteinDistance(a, b) {
+        if (a.length === 0) return b.length;
+        if (b.length === 0) return a.length;
+
+        const matrix = [];
+
+        // Initialisation de la première ligne et de la première colonne
+        for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+        for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+
+        // Remplissage de la matrice
+        for (let i = 1; i <= b.length; i++) {
+            for (let j = 1; j <= a.length; j++) {
+                const cost = a[j-1] === b[i-1] ? 0 : 1;
+                matrix[i][j] = Math.min(
+                    matrix[i-1][j] + 1,    // Suppression
+                    matrix[i][j-1] + 1,    // Insertion
+                    matrix[i-1][j-1] + cost // Substitution
+                );
+            }
+        }
+
+        return matrix[b.length][a.length];
+    }
 
     document.querySelectorAll('[style]').forEach((el) => {
         const style = el.getAttribute('style');
@@ -416,7 +478,14 @@ document.addEventListener('DOMContentLoaded', function () {
             
             // Étape 1: Filtrer par recherche (si terme de recherche)
             let filtered = searchActive 
-                ? all.filter(card => getCardName(card).toLowerCase().includes(term))
+                ? all.filter(card => {
+                    const cardName = getCardName(card);
+                    const cardCategory = getCardCategory(card);
+                    
+                    // Recherche dans le nom et la catégorie
+                    return fuzzyMatch(cardName, term) || 
+                           fuzzyMatch(cardCategory, term);
+                })
                 : all;
             
             // Étape 2: Appliquer le filtre (si sélectionné)
