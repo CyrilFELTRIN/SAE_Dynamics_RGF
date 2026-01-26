@@ -1,0 +1,101 @@
+﻿@page
+@model SAE_Dynamics_RGF.Pages.NewsModel
+@{
+}
+
+<!-- Maquette News - TODO: remplacer les textes statiques par les champs Dataverse -->
+
+<!-- Hero section -->
+<section class="py-5 bg-light border-bottom">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-7 mb-4 mb-lg-0">
+                <span class="badge bg-primary mb-3" style="letter-spacing: .08em;">
+                    <span data-lang-fr="@Model.SiteContent.NewsBadgeFr" data-lang-en="@Model.SiteContent.NewsBadgeEn">
+                        @Model.SiteContent.NewsBadgeFr
+                    </span>
+                </span>
+                <h1 class="display-5 fw-bold mb-3"
+                    data-lang-fr="@Model.SiteContent.NewsHeroTitleFr"
+                    data-lang-en="@Model.SiteContent.NewsHeroTitleEn">
+                    @Model.SiteContent.NewsHeroTitleFr
+                </h1>
+                <p class="lead mb-4"
+                   data-lang-fr="@Model.SiteContent.NewsHeroSubtitleFr"
+                   data-lang-en="@Model.SiteContent.NewsHeroSubtitleEn">
+                    @Model.SiteContent.NewsHeroSubtitleFr
+                </p>
+            </div>
+            <div class="col-lg-5 text-center">
+                <div class="position-relative d-inline-block">
+                    <img src="@(Model.SiteContent.NewsHeroImageUrl ?? "https://picsum.photos/seed/news-hero/520/320")" class="img-fluid rounded-4 shadow-lg" alt="News hero" />
+                    <div class="position-absolute top-0 start-0 translate-middle bg-primary text-white rounded-pill px-3 py-1 small">
+                        <span data-lang-fr="Nouveau" data-lang-en="New">Nouveau</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Liste d'articles principaux -->
+<section class="container py-5">
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <article class="card h-100 shadow-sm border-0 overflow-hidden">
+                <div class="ratio ratio-16x9">
+                    <img src="@(Model.SiteContent.NewsArticle1ImageUrl ?? "https://picsum.photos/seed/news-main1/900/600")" class="card-img-top" alt="Article 1" />
+                </div>
+                <div class="card-body p-4">
+                    <span class="badge bg-primary mb-2">Insights</span>
+                    <h2 class="h4 mb-3"
+                        data-lang-fr="@Model.SiteContent.NewsArticle1TitleFr"
+                        data-lang-en="@Model.SiteContent.NewsArticle1TitleEn">
+                        @Model.SiteContent.NewsArticle1TitleFr
+                    </h2>
+                    <p class="mb-0"
+                       data-lang-fr="@Model.SiteContent.NewsArticle1TextFr"
+                       data-lang-en="@Model.SiteContent.NewsArticle1TextEn">
+                        @Model.SiteContent.NewsArticle1TextFr
+                    </p>
+                </div>
+                <div class="card-footer border-0 bg-transparent px-4 pb-4 pt-0 small text-muted d-flex justify-content-between">
+                    <span>@Model.SiteContent.NewsArticle1Date</span>
+                    <span data-lang-fr="@Model.SiteContent.NewsArticle1ReadTimeFr" data-lang-en="@Model.SiteContent.NewsArticle1ReadTimeEn">
+                        @Model.SiteContent.NewsArticle1ReadTimeFr
+                    </span>
+                </div>
+            </article>
+        </div>
+
+        <div class="col-lg-6">
+            <article class="card h-100 shadow-sm border-0 overflow-hidden mb-4">
+                <div class="row g-0 h-100">
+                    <div class="col-md-5">
+                        <div class="ratio ratio-4x3 h-100">
+                            <img src="@(Model.SiteContent.NewsArticle2ImageUrl ?? "https://picsum.photos/seed/news-main2/700/500")" class="img-fluid h-100 w-100 object-fit-cover" alt="Article 2" />
+                        </div>
+                    </div>
+                    <div class="col-md-7">
+                        <div class="card-body p-4">
+                            <span class="badge bg-secondary mb-2">Event</span>
+                            <h3 class="h5 mb-2"
+                                data-lang-fr="@Model.SiteContent.NewsArticle2TitleFr"
+                                data-lang-en="@Model.SiteContent.NewsArticle2TitleEn">
+                                @Model.SiteContent.NewsArticle2TitleFr
+                            </h3>
+                            <p class="mb-0"
+                               data-lang-fr="@Model.SiteContent.NewsArticle2TextFr"
+                               data-lang-en="@Model.SiteContent.NewsArticle2TextEn">
+                                @Model.SiteContent.NewsArticle2TextFr
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </div>
+</section>
+
+<!-- Espacement avant footer -->
+<div class="py-5"></div>

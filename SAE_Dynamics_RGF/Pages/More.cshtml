@@ -1,0 +1,109 @@
+﻿@page
+@model SAE_Dynamics_RGF.Pages.MoreModel
+@{
+}
+
+<!-- Maquette More - TODO: remplacer les textes statiques par les champs Dataverse -->
+
+<!-- Hero section -->
+<section class="py-5 bg-light border-bottom">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-7 mb-4 mb-lg-0">
+                <span class="badge bg-primary mb-3" style="letter-spacing: .08em;">
+                    <span data-lang-fr="@Model.SiteContent.MoreBadgeFr" data-lang-en="@Model.SiteContent.MoreBadgeEn">
+                        @Model.SiteContent.MoreBadgeFr
+                    </span>
+                </span>
+                <h1 class="display-5 fw-bold mb-3"
+                    data-lang-fr="@Model.SiteContent.MoreHeroTitleFr"
+                    data-lang-en="@Model.SiteContent.MoreHeroTitleEn">
+                    @Model.SiteContent.MoreHeroTitleFr
+                </h1>
+                <p class="lead mb-4"
+                   data-lang-fr="@Model.SiteContent.MoreHeroSubtitleFr"
+                   data-lang-en="@Model.SiteContent.MoreHeroSubtitleEn">
+                    @Model.SiteContent.MoreHeroSubtitleFr
+                </p>
+            </div>
+            <div class="col-lg-5 text-center">
+                <div class="position-relative d-inline-block">
+                    <img src="@(Model.SiteContent.MoreHeroImageUrl ?? "https://picsum.photos/seed/more-hero/520/320")" class="img-fluid rounded-4 shadow-lg" alt="More hero" />
+                    <div class="position-absolute bottom-0 end-0 translate-middle bg-light text-dark rounded-4 px-3 py-2 small text-start" style="max-width: 220px;">
+                        <div class="fw-bold" data-lang-fr="+10 ans d'expertise" data-lang-en="10+ years of expertise">+10 ans d'expertise</div>
+                        <div class="small" data-lang-fr="Une équipe dédiée à vos projets" data-lang-en="A team dedicated to your projects">Une équipe dédiée à vos projets</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Sections principales -->
+<section class="container py-5">
+    <div class="row g-5 align-items-start">
+        <div class="col-lg-6">
+            <h2 class="h3 mb-3"
+                data-lang-fr="@Model.SiteContent.MoreStoryTitleFr"
+                data-lang-en="@Model.SiteContent.MoreStoryTitleEn">
+                @Model.SiteContent.MoreStoryTitleFr
+            </h2>
+            <p class="mb-4"
+               data-lang-fr="@Model.SiteContent.MoreStoryTextFr"
+               data-lang-en="@Model.SiteContent.MoreStoryTextEn">
+                @Model.SiteContent.MoreStoryTextFr
+            </p>
+
+            <h2 class="h3 mb-3"
+                data-lang-fr="@Model.SiteContent.MoreValuesTitleFr"
+                data-lang-en="@Model.SiteContent.MoreValuesTitleEn">
+                @Model.SiteContent.MoreValuesTitleFr
+            </h2>
+            <p class="mb-0"
+               data-lang-fr="@Model.SiteContent.MoreValuesTextFr"
+               data-lang-en="@Model.SiteContent.MoreValuesTextEn">
+                @Model.SiteContent.MoreValuesTextFr
+            </p>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <h3 class="h5 mb-2"
+                        data-lang-fr="@Model.SiteContent.MoreTeamTitleFr"
+                        data-lang-en="@Model.SiteContent.MoreTeamTitleEn">
+                        @Model.SiteContent.MoreTeamTitleFr
+                    </h3>
+                    <p class="mb-0"
+                       data-lang-fr="@Model.SiteContent.MoreTeamTextFr"
+                       data-lang-en="@Model.SiteContent.MoreTeamTextEn">
+                        @Model.SiteContent.MoreTeamTextFr
+                    </p>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
+                            <span class="fw-bold">1</span>
+                        </div>
+                        <h3 class="h6 mb-0"
+                            data-lang-fr="@Model.SiteContent.MoreNextTitleFr"
+                            data-lang-en="@Model.SiteContent.MoreNextTitleEn">
+                            @Model.SiteContent.MoreNextTitleFr
+                        </h3>
+                    </div>
+                    <p class="mb-0"
+                       data-lang-fr="@Model.SiteContent.MoreNextTextFr"
+                       data-lang-en="@Model.SiteContent.MoreNextTextEn">
+                        @Model.SiteContent.MoreNextTextFr
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Espacement avant footer -->
+<div class="py-5"></div>

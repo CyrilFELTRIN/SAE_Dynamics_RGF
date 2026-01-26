@@ -1109,6 +1109,204 @@ namespace SAE_Dynamics_RGF.Data
             GC.SuppressFinalize(this);
         }
 
+        public class SiteWebContent
+        {
+            // News / Actualités
+            public string NewsBadgeFr { get; set; }
+            public string NewsBadgeEn { get; set; }
+            public string NewsHeroTitleFr { get; set; }
+            public string NewsHeroTitleEn { get; set; }
+            public string NewsHeroSubtitleFr { get; set; }
+            public string NewsHeroSubtitleEn { get; set; }
+            public string NewsHeroImageUrl { get; set; }
+
+            public string NewsArticle1TitleFr { get; set; }
+            public string NewsArticle1TitleEn { get; set; }
+            public string NewsArticle1TextFr { get; set; }
+            public string NewsArticle1TextEn { get; set; }
+            public string NewsArticle1ReadTimeFr { get; set; }
+            public string NewsArticle1ReadTimeEn { get; set; }
+            public string NewsArticle1Date { get; set; }
+            public string NewsArticle1ImageUrl { get; set; }
+
+            public string NewsArticle2TitleFr { get; set; }
+            public string NewsArticle2TitleEn { get; set; }
+            public string NewsArticle2TextFr { get; set; }
+            public string NewsArticle2TextEn { get; set; }
+            public string NewsArticle2ImageUrl { get; set; }
+
+            // More / En savoir plus
+            public string MoreBadgeFr { get; set; }
+            public string MoreBadgeEn { get; set; }
+            public string MoreHeroTitleFr { get; set; }
+            public string MoreHeroTitleEn { get; set; }
+            public string MoreHeroSubtitleFr { get; set; }
+            public string MoreHeroSubtitleEn { get; set; }
+            public string MoreHeroImageUrl { get; set; }
+
+            public string MoreStoryTitleFr { get; set; }
+            public string MoreStoryTitleEn { get; set; }
+            public string MoreStoryTextFr { get; set; }
+            public string MoreStoryTextEn { get; set; }
+
+            public string MoreValuesTitleFr { get; set; }
+            public string MoreValuesTitleEn { get; set; }
+            public string MoreValuesTextFr { get; set; }
+            public string MoreValuesTextEn { get; set; }
+
+            public string MoreTeamTitleFr { get; set; }
+            public string MoreTeamTitleEn { get; set; }
+            public string MoreTeamTextFr { get; set; }
+            public string MoreTeamTextEn { get; set; }
+
+            public string MoreNextTitleFr { get; set; }
+            public string MoreNextTitleEn { get; set; }
+            public string MoreNextTextFr { get; set; }
+            public string MoreNextTextEn { get; set; }
+        }
+
+        public SiteWebContent GetSiteWebContent()
+        {
+            var content = new SiteWebContent();
+            if (!IsConnected) return content;
+
+            try
+            {
+                var query = new QueryExpression("crda6_siteweb")
+                {
+                    ColumnSet = new ColumnSet(
+                        // News / actualités
+                        "crda6_news_badge_fr",
+                        "crda6_news_badge_en",
+                        "crda6_news_hero_title_fr",
+                        "crda6_news_hero_title_en",
+                        "crda6_news_hero_subtitle_fr",
+                        "crda6_news_hero_subtitle_en",
+                        "crda6_news_hero_imageurl",
+
+                        "crda6_news_article1_title_fr",
+                        "crda6_news_article1_title_en",
+                        "crda6_news_article1_text_fr",
+                        "crda6_news_article1_text_en",
+                        "crda6_news_article1_readtime_fr",
+                        "crda6_news_article1_readtime_en",
+                        "crda6_news_article1_date",
+                        "crda6_news_article1_imageurl",
+
+                        "crda6_news_article2_title_fr",
+                        "crda6_news_article2_title_en",
+                        "crda6_news_article2_text_fr",
+                        "crda6_news_article2_text_en",
+                        "crda6_news_article2_imageurl",
+
+                        // More / en savoir plus
+                        "crda6_more_badge_fr",
+                        "crda6_more_badge_en",
+                        "crda6_more_hero_title_fr",
+                        "crda6_more_hero_title_en",
+                        "crda6_more_hero_subtitle_fr",
+                        "crda6_more_hero_subtitle_en",
+                        "crda6_more_hero_imageurl",
+
+                        "crda6_more_story_title_fr",
+                        "crda6_more_story_title_en",
+                        "crda6_more_story_text_fr",
+                        "crda6_more_story_text_en",
+
+                        "crda6_more_values_title_fr",
+                        "crda6_more_values_title_en",
+                        "crda6_more_values_text_fr",
+                        "crda6_more_values_text_en",
+
+                        "crda6_more_team_title_fr",
+                        "crda6_more_team_title_en",
+                        "crda6_more_team_text_fr",
+                        "crda6_more_team_text_en",
+
+                        "crda6_more_next_title_fr",
+                        "crda6_more_next_title_en",
+                        "crda6_more_next_text_fr",
+                        "crda6_more_next_text_en"
+                    ),
+                    TopCount = 1
+                };
+
+                var result = _serviceClient.RetrieveMultiple(query);
+                var entity = result.Entities.FirstOrDefault();
+                if (entity == null)
+                {
+                    Console.WriteLine("[GetSiteWebContent] Aucun enregistrement trouvé dans crda6_siteweb.");
+                    return content;
+                }
+
+                Console.WriteLine($"[GetSiteWebContent] Enregistrement trouvé (ID: {entity.Id})");
+
+                content.NewsBadgeFr = entity.GetAttributeValue<string>("crda6_news_badge_fr");
+                content.NewsBadgeEn = entity.GetAttributeValue<string>("crda6_news_badge_en");
+                content.NewsHeroTitleFr = entity.GetAttributeValue<string>("crda6_news_hero_title_fr");
+                content.NewsHeroTitleEn = entity.GetAttributeValue<string>("crda6_news_hero_title_en");
+                content.NewsHeroSubtitleFr = entity.GetAttributeValue<string>("crda6_news_hero_subtitle_fr");
+                content.NewsHeroSubtitleEn = entity.GetAttributeValue<string>("crda6_news_hero_subtitle_en");
+                content.NewsHeroImageUrl = entity.GetAttributeValue<string>("crda6_news_hero_imageurl");
+
+                content.NewsArticle1TitleFr = entity.GetAttributeValue<string>("crda6_news_article1_title_fr");
+                content.NewsArticle1TitleEn = entity.GetAttributeValue<string>("crda6_news_article1_title_en");
+                content.NewsArticle1TextFr = entity.GetAttributeValue<string>("crda6_news_article1_text_fr");
+                content.NewsArticle1TextEn = entity.GetAttributeValue<string>("crda6_news_article1_text_en");
+                content.NewsArticle1ReadTimeFr = entity.GetAttributeValue<string>("crda6_news_article1_readtime_fr");
+                content.NewsArticle1ReadTimeEn = entity.GetAttributeValue<string>("crda6_news_article1_readtime_en");
+                content.NewsArticle1Date = entity.GetAttributeValue<string>("crda6_news_article1_date");
+                content.NewsArticle1ImageUrl = entity.GetAttributeValue<string>("crda6_news_article1_imageurl");
+
+                content.NewsArticle2TitleFr = entity.GetAttributeValue<string>("crda6_news_article2_title_fr");
+                content.NewsArticle2TitleEn = entity.GetAttributeValue<string>("crda6_news_article2_title_en");
+                content.NewsArticle2TextFr = entity.GetAttributeValue<string>("crda6_news_article2_text_fr");
+                content.NewsArticle2TextEn = entity.GetAttributeValue<string>("crda6_news_article2_text_en");
+                content.NewsArticle2ImageUrl = entity.GetAttributeValue<string>("crda6_news_article2_imageurl");
+
+                content.MoreBadgeFr = entity.GetAttributeValue<string>("crda6_more_badge_fr");
+                content.MoreBadgeEn = entity.GetAttributeValue<string>("crda6_more_badge_en");
+                content.MoreHeroTitleFr = entity.GetAttributeValue<string>("crda6_more_hero_title_fr");
+                content.MoreHeroTitleEn = entity.GetAttributeValue<string>("crda6_more_hero_title_en");
+                content.MoreHeroSubtitleFr = entity.GetAttributeValue<string>("crda6_more_hero_subtitle_fr");
+                content.MoreHeroSubtitleEn = entity.GetAttributeValue<string>("crda6_more_hero_subtitle_en");
+                content.MoreHeroImageUrl = entity.GetAttributeValue<string>("crda6_more_hero_imageurl");
+
+                content.MoreStoryTitleFr = entity.GetAttributeValue<string>("crda6_more_story_title_fr");
+                content.MoreStoryTitleEn = entity.GetAttributeValue<string>("crda6_more_story_title_en");
+                content.MoreStoryTextFr = entity.GetAttributeValue<string>("crda6_more_story_text_fr");
+                content.MoreStoryTextEn = entity.GetAttributeValue<string>("crda6_more_story_text_en");
+
+                content.MoreValuesTitleFr = entity.GetAttributeValue<string>("crda6_more_values_title_fr");
+                content.MoreValuesTitleEn = entity.GetAttributeValue<string>("crda6_more_values_title_en");
+                content.MoreValuesTextFr = entity.GetAttributeValue<string>("crda6_more_values_text_fr");
+                content.MoreValuesTextEn = entity.GetAttributeValue<string>("crda6_more_values_text_en");
+
+                content.MoreTeamTitleFr = entity.GetAttributeValue<string>("crda6_more_team_title_fr");
+                content.MoreTeamTitleEn = entity.GetAttributeValue<string>("crda6_more_team_title_en");
+                content.MoreTeamTextFr = entity.GetAttributeValue<string>("crda6_more_team_text_fr");
+                content.MoreTeamTextEn = entity.GetAttributeValue<string>("crda6_more_team_text_en");
+
+                content.MoreNextTitleFr = entity.GetAttributeValue<string>("crda6_more_next_title_fr");
+                content.MoreNextTitleEn = entity.GetAttributeValue<string>("crda6_more_next_title_en");
+                content.MoreNextTextFr = entity.GetAttributeValue<string>("crda6_more_next_text_fr");
+                content.MoreNextTextEn = entity.GetAttributeValue<string>("crda6_more_next_text_en");
+
+                // Log quelques valeurs pour débugger
+                Console.WriteLine($"[GetSiteWebContent] NewsBadgeFr = '{content.NewsBadgeFr}'");
+                Console.WriteLine($"[GetSiteWebContent] NewsHeroTitleFr = '{content.NewsHeroTitleFr}'");
+                Console.WriteLine($"[GetSiteWebContent] MoreBadgeFr = '{content.MoreBadgeFr}'");
+                Console.WriteLine($"[GetSiteWebContent] MoreHeroTitleFr = '{content.MoreHeroTitleFr}'");
+
+                return content;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erreur lors de la récupération du contenu du site web : " + ex.Message);
+                return content;
+            }
+        }
+
         public class Product
         {
             public Guid Id { get; set; }
