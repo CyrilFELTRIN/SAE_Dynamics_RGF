@@ -444,14 +444,23 @@
                             </a>
                         </li>
 
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewContext.RouteData.Values["Page"].ToString() == "/News" ? "active" : "")" 
+                               asp-page="/News" 
+                               data-lang-fr="Actualités" 
+                               data-lang-en="News">
+                                <i class="fas fa-newspaper me-1"></i> <span data-lang-fr="Actualités" data-lang-en="News">Actualités</span>
+                            </a>
+                        </li>
+
                         @* Liens vers devis/demandes/commandes déplacés dans la section profil *@
 
                         <li class="nav-item">
-                            <a class="nav-link @(ViewContext.RouteData.Values["Page"].ToString() == "/Contact" ? "active" : "")" 
-                               asp-page="/Contact" 
-                               data-lang-fr="Contact" 
-                               data-lang-en="Contact">
-                                <i class="fas fa-envelope me-1"></i> <span data-lang-fr="Contact" data-lang-en="Contact">Contact</span>
+                            <a class="nav-link @(ViewContext.RouteData.Values["Page"].ToString() == "/More" ? "active" : "")" 
+                               asp-page="/More" 
+                               data-lang-fr="En savoir plus" 
+                               data-lang-en="More">
+                                <i class="fas fa-info-circle me-1"></i> <span data-lang-fr="En savoir plus" data-lang-en="More">En savoir plus</span>
                             </a>
                         </li>
                     </ul>
@@ -605,13 +614,14 @@
                     <ul class="list-unstyled">
                         <li class="mb-2"><a href="/" class="text-muted text-decoration-none" data-lang-fr="Accueil" data-lang-en="Home">Accueil</a></li>
                         <li class="mb-2"><a href="/Products" class="text-muted text-decoration-none" data-lang-fr="Produits" data-lang-en="Products">Produits</a></li>
+                        <li class="mb-2"><a href="/News" class="text-muted text-decoration-none" data-lang-fr="Actualités" data-lang-en="News">Actualités</a></li>
+                        <li class="mb-2"><a href="/More" class="text-muted text-decoration-none" data-lang-fr="En savoir plus" data-lang-en="More">En savoir plus</a></li>
                         @if (isLoggedIn)
                         {
                             <li class="mb-2"><a href="/Quotes" class="text-muted text-decoration-none" data-lang-fr="Devis" data-lang-en="Quotes">Devis</a></li>
                             <li class="mb-2"><a href="/Requests" class="text-muted text-decoration-none" data-lang-fr="Mes demandes" data-lang-en="My requests">Mes demandes</a></li>
                             <li class="mb-2"><a href="/Salesorder" class="text-muted text-decoration-none" data-lang-fr="Commandes" data-lang-en="Orders">Commandes</a></li>
                         }
-                        <li class="mb-2"><a href="/Contact" class="text-muted text-decoration-none" data-lang-fr="Contact" data-lang-en="Contact">Contact</a></li>
                     </ul>
                 </div>
                 <div class="col-6 col-md-3 col-lg-2 mb-4">

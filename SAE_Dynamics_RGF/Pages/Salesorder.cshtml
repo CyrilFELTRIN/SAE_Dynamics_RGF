@@ -62,13 +62,9 @@
                     </div>
                     <div class="col-md-3">
                         <div class="d-flex align-items-center justify-content-end">
-                            <button class="btn btn-outline-secondary me-2" type="button">
+                            <button class="btn btn-outline-secondary" type="button">
                                 <i class="fas fa-filter"></i>
                                 <span class="d-none d-md-inline ms-1" data-lang-fr="Filtres" data-lang-en="Filters">Filtres</span>
-                            </button>
-                            <button class="btn btn-outline-secondary" type="button">
-                                <i class="fas fa-download"></i>
-                                <span class="d-none d-md-inline ms-1" data-lang-fr="Exporter" data-lang-en="Export">Exporter</span>
                             </button>
                         </div>
                     </div>
@@ -79,11 +75,12 @@
                     <table id="rolix-orders-table" class="table table-hover align-middle mb-0" data-rolix-table data-rolix-page-size="10">
                         <thead class="bg-light">
                             <tr>
-                                <th class="px-4" data-lang-fr="N° COMMANDE" data-lang-en="ORDER #">N° COMMANDE</th>
-                                <th data-lang-fr="CLIENT" data-lang-en="CUSTOMER">CLIENT</th>
-                                <th class="text-center" data-lang-fr="DATE" data-lang-en="DATE">DATE</th>
-                                <th class="text-end pe-4" data-lang-fr="MONTANT" data-lang-en="AMOUNT">MONTANT</th>
-                                <th class="text-center" data-lang-fr="STATUT" data-lang-en="STATUS">STATUT</th>
+                                <th class="px-4" data-lang-fr="N°" data-lang-en="#">N°</th>
+                                <th data-lang-fr="N° Devis" data-lang-en="Quote #">N° Devis</th>
+                                <th data-lang-fr="Produit" data-lang-en="Product">Produit</th>
+                                <th class="text-center" data-lang-fr="Date" data-lang-en="Date">Date</th>
+                                <th class="text-end pe-4" data-lang-fr="Montant" data-lang-en="Amount">Montant</th>
+                                <th class="text-center" data-lang-fr="Statut" data-lang-en="Status">Statut</th>
                                 <th class="text-end pe-4" data-rolix-nosort></th>
                             </tr>
                         </thead>
@@ -131,19 +128,8 @@
                                     <td class="px-4 fw-semibold">
                                         <a href="#" class="text-decoration-none">#@order.OrderNumber</a>
                                     </td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="flex-shrink-0 me-3">
-                                                <div class="avatar-sm bg-soft-primary rounded-circle d-flex align-items-center justify-content-center">
-                                                    <i class="fas fa-building text-primary"></i>
-                                                </div>
-                                            </div>
-                                            <div class="flex-grow-1">
-                                                <h6 class="mb-0">@order.CustomerId</h6>
-                                                <small class="text-muted">@order.PriceLevelId</small>
-                                            </div>
-                                        </div>
-                                    </td>
+                                    <td>@(!string.IsNullOrEmpty(order.QuoteNumber) ? "#" + order.QuoteNumber : "-")</td>
+                                    <td><a asp-page="/ProductDetail" asp-route-ProductNumber="@order.ProductNumber" class="text-decoration-none fw-semibold">@order.ProductName</a></td>
                                     <td class="text-center" data-sort="@order.CreatedOn.ToString("yyyy-MM-dd")">@order.CreatedOn.ToString("dd/MM/yyyy")</td>
                                     <td class="text-end pe-4 fw-bold" data-sort="@order.TotalAmount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)">@order.TotalAmount.ToString("N2") €</td>
                                     <td class="text-center">
@@ -156,16 +142,10 @@
                                         <span class="status-badge @statusClass">@statusText</span>
                                     </td>
                                     <td class="text-end pe-4">
-                                        <div class="dropdown">
-                                            <button class="btn btn-sm btn-link text-muted" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                <i class="fas fa-ellipsis-v"></i>
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end">
-                                                <li><a class="dropdown-item" href="#" data-lang-fr="Voir les détails" data-lang-en="View details">Voir les détails</a></li>
-                                                <li><a class="dropdown-item" href="#" data-lang-fr="Télécharger la facture" data-lang-en="Download invoice">Télécharger la facture</a></li>
-                                                <li><a class="dropdown-item text-danger" href="#" data-lang-fr="Annuler la commande" data-lang-en="Cancel order">Annuler la commande</a></li>
-                                            </ul>
-                                        </div>
+                                        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#savOrderModal-@order.Id" data-lang-fr="Demande SAV" data-lang-en="Support request">
+                                            <i class="fas fa-wrench me-1"></i>
+                                            Demande SAV
+                                        </button>
                                     </td>
                                 </tr>
                             }
@@ -181,6 +161,71 @@
             </div>
         </div>
     }
+    
+    <!-- Modals for SAV requests -->
+    @foreach (var order in Model.SalesOrders)
+    {
+        <div class="modal fade" id="savOrderModal-@order.Id" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" data-lang-fr="Demande SAV" data-lang-en="Support request">Demande SAV</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form method="post" asp-page-handler="CreateSavFromOrder" enctype="multipart/form-data">
+                        <div class="modal-body">
+                            <input type="hidden" name="SavOrderId" value="@order.Id" />
+
+                            <div class="mb-3">
+                                <label class="form-label" data-lang-fr="Produit concerné" data-lang-en="Product">Produit concerné</label>
+                                <select class="form-select" name="SavProductId" required>
+                                    <option value="" data-lang-fr="Sélectionner" data-lang-en="Select">Sélectionner</option>
+                                    @foreach (var line in order.Lines)
+                                    {
+                                        <option value="@line.ProductId">@line.ProductName</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label" data-lang-fr="Nom" data-lang-en="Name">Nom</label>
+                                <input class="form-control" name="SavName" required />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label" data-lang-fr="Description" data-lang-en="Description">Description</label>
+                                <textarea class="form-control" name="SavDescription" rows="3"></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label" data-lang-fr="Diagnostic" data-lang-en="Diagnostic">Diagnostic</label>
+                                <select class="form-select" name="SavDiagnostic">
+                                    <option value="" data-lang-fr="Sélectionner un diagnostic" data-lang-en="Select a diagnostic">Sélectionner un diagnostic</option>
+                                    <option value="258130000" data-lang-fr="Ne fonctionne pas" data-lang-en="Not working">Ne fonctionne pas</option>
+                                    <option value="258130001" data-lang-fr="Détérioration esthétique" data-lang-en="Aesthetic deterioration">Détérioration esthétique</option>
+                                    <option value="258130002" data-lang-fr="Autre" data-lang-en="Other">Autre</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label" data-lang-fr="Photo (optionnel)" data-lang-en="Photo (optional)">Photo (optionnel)</label>
+                                <input type="file" class="form-control" name="SavPhoto" accept="image/*" />
+                                <div class="form-text">Formats acceptés : JPG, PNG, GIF, BMP, WebP. Taille max : 5MB</div>
+                            </div>
+
+                            <div class="alert alert-info mb-0" role="alert">
+                                <span data-lang-fr="La date d'achat sera renseignée automatiquement avec la date de la commande." data-lang-en="Purchase date will be set automatically to the order date.">La date d'achat sera renseignée automatiquement avec la date de la commande.</span>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" data-lang-fr="Annuler" data-lang-en="Cancel">Annuler</button>
+                            <button type="submit" class="btn btn-danger" data-lang-fr="Envoyer" data-lang-en="Submit">Envoyer</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 <!-- Styles spécifiques pour cette page -->
@@ -192,58 +237,28 @@
         align-items: center;
         justify-content: center;
     }
-    
     .bg-soft-primary {
         background-color: rgba(139, 92, 246, 0.1) !important;
     }
     
-    .dropdown-menu {
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-        border: none;
-        border-radius: 0.5rem;
-        padding: 0.5rem;
-    }
-    
-    .dropdown-item {
-        padding: 0.5rem 1rem;
-        border-radius: 0.35rem;
-        font-size: 0.85rem;
-    }
-    
-    .table > :not(caption) > * > * {
-        padding: 1rem 0.5rem;
-    }
-    
-    .form-select, .form-control {
-        border-radius: 0.5rem;
-        padding: 0.5rem 1rem;
-        border: 1px solid var(--border-color);
-        background-color: var(--card-bg);
-        color: var(--text-color);
-        transition: all 0.2s ease;
-    }
-    
-    .form-select:focus, .form-control:focus {
-        border-color: var(--primary);
-        box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.25);
-    }
-    
-    .input-group {
-        background-color: var(--card-bg);
-        border-radius: 0.5rem;
-        border: 1px solid var(--border-color);
-        transition: all 0.2s ease;
-    }
-    
-    .input-group:focus-within {
-        border-color: var(--primary);
-        box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.25);
-    }
-    
-    .input-group-text {
-        background-color: transparent;
-        border: none;
-        color: var(--text-muted);
+    .table-responsive {
+        overflow: visible !important;
     }
 
+    /* Modal z-index fix - absolute highest priority */
+    .modal {
+        z-index: 99999 !important;
+    }
+    
+    .modal-backdrop {
+        z-index: 99998 !important;
+    }
+    
+    .modal-dialog {
+        z-index: 99999 !important;
+    }
+    
+    .modal-content {
+        z-index: 99999 !important;
+    }
 </style>

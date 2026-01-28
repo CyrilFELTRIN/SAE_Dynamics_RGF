@@ -1,0 +1,185 @@
+@page
+@model SAE_Dynamics_RGF.Pages.SavRequestsModel
+@{
+    ViewData["Title"] = "Liste des demandes SAV";
+}
+
+<div data-rolix-scope>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center gap-2">
+            <a asp-page="/Profile" asp-route-tab="sav" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left me-1"></i>
+                <span data-lang-fr="Retour au profil" data-lang-en="Back to profile">Retour au profil</span>
+            </a>
+            <h2 class="mb-0" data-lang-fr="Mes demandes SAV" data-lang-en="My support requests">@ViewData["Title"]</h2>
+        </div>
+        <div>
+            <a asp-page="/Sav" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>
+                <span data-lang-fr="Nouvelle demande SAV" data-lang-en="New support request">Nouvelle demande SAV</span>
+            </a>
+        </div>
+    </div>
+
+@if (!Model.SavRequests.Any())
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5">
+            <div class="text-muted mb-3">
+                <i class="fas fa-screwdriver-wrench fa-3x mb-3"></i>
+                <h4 class="h5" data-lang-fr="Aucune demande SAV" data-lang-en="No support requests">Aucune demande SAV</h4>
+                <p class="mb-0" data-lang-fr="Commencez par créer votre première demande SAV" data-lang-en="Start by creating your first support request">
+                    Commencez par créer votre première demande SAV
+                </p>
+            </div>
+            <a asp-page="/Sav" class="btn btn-primary mt-3" data-lang-fr="Créer une demande SAV" data-lang-en="Create a support request">
+                <i class="fas fa-plus me-2"></i>
+                <span data-lang-fr="Créer une demande SAV" data-lang-en="Create a support request">Créer une demande SAV</span>
+            </a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-header border-bottom">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-6">
+                    <div class="input-group rounded-3">
+                        <span class="input-group-text bg-transparent border-end-0"><i class="fas fa-search text-muted"></i></span>
+                        <input type="text" class="form-control border-start-0 bg-transparent" placeholder="Rechercher une demande SAV..." data-lang-fr-placeholder="Rechercher une demande SAV..." data-lang-en-placeholder="Search a support request..." data-rolix-search-for="rolix-sav-table">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" data-rolix-filter-for="rolix-sav-table">
+                        <option value="all" data-lang-fr="Tous les statuts" data-lang-en="All statuses">Tous les statuts</option>
+                        <option value="pending" data-lang-fr="En attente" data-lang-en="Pending">En attente</option>
+                        <option value="inprogress" data-lang-fr="En cours" data-lang-en="In progress">En cours</option>
+                        <option value="completed" data-lang-fr="Terminé" data-lang-en="Completed">Terminé</option>
+                        <option value="closed" data-lang-fr="Fermé" data-lang-en="Closed">Fermé</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="d-flex align-items-center justify-content-end">
+                        <button class="btn btn-outline-secondary" type="button">
+                            <i class="fas fa-download"></i>
+                            <span class="d-none d-md-inline ms-1" data-lang-fr="Exporter" data-lang-en="Export">Exporter</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table id="rolix-sav-table" class="table table-hover align-middle mb-0" data-rolix-table data-rolix-page-size="10">
+                    <thead class="bg-light">
+                        <tr>
+                            <th data-lang-fr="Nom" data-lang-en="Name">Nom</th>
+                            <th data-lang-fr="Produit" data-lang-en="Product">Produit</th>
+                            <th data-lang-fr="Date d'achat" data-lang-en="Purchase date">Date d'achat</th>
+                            <th data-lang-fr="Créée le" data-lang-en="Created on">Créée le</th>
+                            <th class="text-end pe-4" data-rolix-nosort></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var sav in Model.SavRequests)
+                        {
+                            <tr>
+                                <td class="fw-semibold">@sav.Name</td>
+                                <td><a asp-page="/ProductDetail" asp-route-ProductNumber="@sav.ProductNumber" class="text-decoration-none fw-semibold">@sav.ProductName</a></td>
+                                <td>@(sav.PurchaseDate.HasValue ? sav.PurchaseDate.Value.ToString("dd/MM/yyyy") : "")</td>
+                                <td>@(sav.CreatedOn.HasValue ? sav.CreatedOn.Value.ToString("dd/MM/yyyy") : "")</td>
+                                <td class="text-end pe-4">
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-link text-muted" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" href="#" data-lang-fr="Voir les détails" data-lang-en="View details">Voir les détails</a></li>
+                                            <li><a class="dropdown-item" href="#" data-lang-fr="Télécharger le PDF" data-lang-en="Download PDF">Télécharger le PDF</a></li>
+                                            <li><a class="dropdown-item" href="#" data-lang-fr="Contacter le support" data-lang-en="Contact support">Contacter le support</a></li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <div class="d-flex justify-content-between align-items-center p-4 border-top" data-rolix-pagination-wrapper-for="rolix-sav-table">
+                <div class="text-muted" data-rolix-info-for="rolix-sav-table"></div>
+                <nav aria-label="Pagination" data-rolix-pagination-for="rolix-sav-table"></nav>
+            </div>
+        </div>
+    </div>
+}
+
+</div>
+
+<!-- Styles spécifiques pour cette page -->
+<style>
+    .avatar-sm {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .bg-soft-primary {
+        background-color: rgba(139, 92, 246, 0.1) !important;
+    }
+    
+    .dropdown-menu {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        border: none;
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+    }
+    
+    .dropdown-item {
+        padding: 0.5rem 1rem;
+        border-radius: 0.35rem;
+        font-size: 0.85rem;
+    }
+    
+    .table > :not(caption) > * > * {
+        padding: 1rem 0.5rem;
+    }
+    
+    .form-select, .form-control {
+        border-radius: 0.5rem;
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border-color);
+        background-color: var(--card-bg);
+        color: var(--text-color);
+        transition: all 0.2s ease;
+    }
+    
+    .form-select:focus, .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.25);
+    }
+    
+    .input-group {
+        background-color: var(--card-bg);
+        border-radius: 0.5rem;
+        border: 1px solid var(--border-color);
+        transition: all 0.2s ease;
+    }
+    
+    .input-group:focus-within {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.25);
+    }
+    
+    .input-group-text {
+        background-color: transparent;
+        border: none;
+        color: var(--text-muted);
+    }
+
+</style>

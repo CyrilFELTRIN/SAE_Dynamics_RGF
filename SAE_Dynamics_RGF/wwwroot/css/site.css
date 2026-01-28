@@ -1490,3 +1490,11 @@ body.dark-mode .auth-switch-circle {
         font-size: 1.1rem;
     }
 }
+
+/* Correction de la hauteur des images des cartes */
+.card-img-top {
+    height: auto !important;
+    max-height: 100%;
+    width: 100%;
+    object-fit: cover;
+}

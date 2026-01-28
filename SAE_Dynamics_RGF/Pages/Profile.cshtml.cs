@@ -22,6 +22,7 @@ namespace SAE_Dynamics_RGF.Pages
         public List<SalesOrder> SalesOrders { get; set; } = new();
         public List<SalesOrder> Invoices { get; set; } = new();
         public List<Opportunity> Opportunities { get; set; } = new();
+        public List<SavRequest> SavRequests { get; set; } = new();
 
         public ProfileModel(DataverseService dataverseService)
         {
@@ -47,8 +48,38 @@ namespace SAE_Dynamics_RGF.Pages
 
             Quotes = _dataverseService.GetQuotesForContact(contactId);
             SalesOrders = _dataverseService.GetSalesOrdersForContact(contactId);
-            Invoices = SalesOrders.Where(o => o.StatusCode == 4).ToList();
+            Invoices = _dataverseService.GetInvoicesForContact(contactId); // Utilise la nouvelle méthode directe
+            
+            // Debug: Afficher les devis récupérés
+            Console.WriteLine($"=== DEBUG: Devis pour contact {contactId} ===");
+            Console.WriteLine($"Nombre de devis: {Quotes.Count}");
+            foreach (var quote in Quotes)
+            {
+                Console.WriteLine($"Devis: {quote.QuoteNumber}, Produit: {quote.ProductName}, Montant: {quote.TotalAmount}");
+            }
+            
+            // Debug: Afficher tous les statuts des commandes pour identifier les factures
+            Console.WriteLine($"=== DEBUG: Commandes pour contact {contactId} ===");
+            Console.WriteLine($"Nombre de commandes: {SalesOrders.Count}");
+            foreach (var order in SalesOrders)
+            {
+                Console.WriteLine($"Commande: {order.OrderNumber}, StatusCode: {order.StatusCode}, StateCode: {order.StateCode}, Produit: {order.ProductName}");
+            }
+            
+            // Debug: Afficher les factures récupérées directement
+            Console.WriteLine($"=== DEBUG: Factures pour contact {contactId} ===");
+            Console.WriteLine($"Nombre de factures: {Invoices.Count}");
+            foreach (var invoice in Invoices)
+            {
+                Console.WriteLine($"Facture: {invoice.InvoiceNumber}, Commande: {invoice.OrderNumber}, Devis: {invoice.QuoteNumber}, Produit: {invoice.ProductName}");
+            }
+            
             Opportunities = _dataverseService.GetOpportunitiesForContact(contactId);
+
+            if (ActiveTab == "sav")
+            {
+                SavRequests = _dataverseService.GetSavRequestsForContact(contactId);
+            }
 
             return Page();
         }
@@ -63,6 +94,7 @@ namespace SAE_Dynamics_RGF.Pages
                 "requests" => "requests",
                 "orders" => "orders",
                 "invoices" => "invoices",
+                "sav" => "sav",
                 _ => "info"
             };
         }

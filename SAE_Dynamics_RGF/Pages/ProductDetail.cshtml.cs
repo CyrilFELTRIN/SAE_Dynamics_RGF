@@ -5,6 +5,8 @@ using SAE_Dynamics_RGF.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
+using System.Threading.Tasks;
 using static SAE_Dynamics_RGF.Data.DataverseService;
 
 namespace SAE_Dynamics_RGF.Pages
@@ -38,6 +40,21 @@ namespace SAE_Dynamics_RGF.Pages
 
         [BindProperty]
         public Guid CurrencyId { get; set; }
+
+        [BindProperty]
+        public string SavName { get; set; }
+
+        [BindProperty]
+        public string SavDescription { get; set; }
+
+        [BindProperty]
+        public DateTime? SavPurchaseDate { get; set; }
+
+        [BindProperty]
+        public IFormFile SavPhoto { get; set; }
+
+        [BindProperty]
+        public int? SavDiagnostic { get; set; }
 
         public string QuoteErrorMessage { get; set; }
         public string QuoteSuccessMessage { get; set; }
@@ -211,6 +228,88 @@ namespace SAE_Dynamics_RGF.Pages
             }
 
             return RedirectToPage("/Requests");
+        }
+
+        public async Task<IActionResult> OnPostCreateSavFromProduct()
+        {
+            var currentPath = (Request?.Path.Value ?? string.Empty) + (Request?.QueryString.ToString() ?? string.Empty);
+            if (HttpContext.Session.GetString("IsLoggedIn") != "true")
+            {
+                return RedirectToPage("/Login", new { ReturnUrl = currentPath });
+            }
+
+            if (!Guid.TryParse(HttpContext.Session.GetString("ContactId"), out var contactId))
+            {
+                return RedirectToPage("/Login", new { ReturnUrl = currentPath });
+            }
+
+            if (string.IsNullOrWhiteSpace(ProductNumber))
+            {
+                return RedirectToPage("/Products");
+            }
+
+            var key = ProductNumber.Trim();
+            Product = _dataverseService.GetProducts()
+                .FirstOrDefault(p => !string.IsNullOrWhiteSpace(p.ProductNumber)
+                                     && p.ProductNumber.Trim().Equals(key, StringComparison.OrdinalIgnoreCase));
+
+            if (Product == null)
+            {
+                Product = _dataverseService.GetParentProducts()
+                    .FirstOrDefault(p => !string.IsNullOrWhiteSpace(p.ProductNumber)
+                                         && p.ProductNumber.Trim().Equals(key, StringComparison.OrdinalIgnoreCase));
+            }
+
+            Currencies = _dataverseService.GetCurrencies();
+
+            if (Product == null)
+            {
+                return RedirectToPage("/Products");
+            }
+
+            byte[] photoData = null;
+            string photoFileName = null;
+
+            if (SavPhoto != null)
+            {
+                // Vérifier la taille du fichier (max 5MB)
+                if (SavPhoto.Length > 5 * 1024 * 1024)
+                {
+                    ModelState.AddModelError(string.Empty, "La photo ne doit pas dépasser 5MB.");
+                    return Page();
+                }
+
+                // Vérifier le type de fichier
+                if (!SavPhoto.ContentType.StartsWith("image/"))
+                {
+                    ModelState.AddModelError(string.Empty, "Veuillez sélectionner un fichier image valide.");
+                    return Page();
+                }
+
+                using (var memoryStream = new MemoryStream())
+                {
+                    await SavPhoto.CopyToAsync(memoryStream);
+                    photoData = memoryStream.ToArray();
+                }
+                photoFileName = SavPhoto.FileName;
+            }
+
+            var (savId, error) = _dataverseService.CreateSavRequest(
+                contactId,
+                Product.Id,
+                SavName,
+                SavDescription,
+                SavPurchaseDate,
+                SavDiagnostic,
+                photoData,
+                photoFileName);
+
+            if (savId == null)
+            {
+                return RedirectToPage("/ProductDetail", new { ProductNumber = ProductNumber });
+            }
+
+            return RedirectToPage("/Profile", new { tab = "sav" });
         }
     }
 }

@@ -48,6 +48,120 @@ namespace SAE_Dynamics_RGF.Data
 
         public bool IsConnected => _serviceClient?.IsReady == true;
 
+        public void Dispose()
+        {
+            _serviceClient?.Dispose();
+        }
+
+        public Contact AuthenticateContact(string identifiant, string password)
+        {
+            if (!IsConnected) return null;
+            if (string.IsNullOrWhiteSpace(identifiant) || string.IsNullOrWhiteSpace(password)) return null;
+
+            try
+            {
+                var query = new QueryExpression("contact")
+                {
+                    ColumnSet = new ColumnSet("firstname", "lastname", "crda6_identifiant", "crda6_motdepasse"),
+                    Criteria = new FilterExpression
+                    {
+                        Conditions =
+                        {
+                            new ConditionExpression("crda6_identifiant", ConditionOperator.Equal, identifiant)
+                        }
+                    }
+                };
+
+                var result = _serviceClient.RetrieveMultiple(query);
+                if (result.Entities.Count == 0) return null;
+
+                var entity = result.Entities[0];
+                var storedPassword = entity.GetAttributeValue<string>("crda6_motdepasse");
+                
+                if (string.IsNullOrEmpty(storedPassword) || storedPassword != password)
+                    return null;
+
+                return new Contact
+                {
+                    Id = entity.Id,
+                    FullName = $"{entity.GetAttributeValue<string>("firstname")} {entity.GetAttributeValue<string>("lastname")}".Trim(),
+                    Identifiant = entity.GetAttributeValue<string>("crda6_identifiant")
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erreur lors de l'authentification du contact : " + ex.Message);
+                return null;
+            }
+        }
+
+        public (Contact Contact, string ErrorMessage) RegisterContact(
+            string firstName,
+            string lastName,
+            string email,
+            string identifiant,
+            string password,
+            DateTime? birthDate,
+            string mobilePhone)
+        {
+            if (!IsConnected) return (null, "Connexion Dataverse indisponible.");
+
+            try
+            {
+                // Vérifier si l'identifiant existe déjà
+                var existingQuery = new QueryExpression("contact")
+                {
+                    ColumnSet = new ColumnSet("contactid"),
+                    Criteria = new FilterExpression
+                    {
+                        Conditions =
+                        {
+                            new ConditionExpression("crda6_identifiant", ConditionOperator.Equal, identifiant)
+                        }
+                    }
+                };
+
+                var existingResult = _serviceClient.RetrieveMultiple(existingQuery);
+                if (existingResult.Entities.Count > 0)
+                    return (null, "Cet identifiant est déjà utilisé.");
+
+                var contact = new Entity("contact")
+                {
+                    ["firstname"] = firstName,
+                    ["lastname"] = lastName,
+                    ["emailaddress1"] = email,
+                    ["crda6_identifiant"] = identifiant,
+                    ["crda6_motdepasse"] = password
+                };
+
+                if (birthDate.HasValue)
+                {
+                    contact["birthdate"] = birthDate.Value;
+                }
+
+                if (!string.IsNullOrWhiteSpace(mobilePhone))
+                {
+                    contact["mobilephone"] = mobilePhone;
+                }
+
+                var contactId = _serviceClient.Create(contact);
+                if (contactId == Guid.Empty)
+                    return (null, "Création du contact impossible.");
+
+                return (new Contact
+                {
+                    Id = contactId,
+                    FullName = $"{firstName} {lastName}".Trim(),
+                    Identifiant = identifiant
+                }, string.Empty);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erreur lors de l'inscription du contact : " + ex.Message);
+                return (null, ex.Message);
+            }
+        }
+
         private byte[] GetFullImageBytes(string entityName, Guid recordId, string attributeName)
         {
             if (!IsConnected) return null;
@@ -556,8 +670,49 @@ namespace SAE_Dynamics_RGF.Data
                         StatusCode = entity.GetAttributeValue<OptionSetValue>("statuscode")?.Value,
                         CreatedOn = entity.Contains("createdon")
                             ? entity.GetAttributeValue<DateTime>("createdon")
-                            : DateTime.MinValue
+                            : DateTime.MinValue,
+                        ProductName = "Non spécifié",
+                        ProductNumber = "",
+                        ProductId = Guid.Empty
                     };
+
+                    // Récupérer les informations du produit depuis les lignes du devis
+                    var detailQuery = new QueryExpression("quotedetail")
+                    {
+                        ColumnSet = new ColumnSet("productid"),
+                        Criteria = new FilterExpression
+                        {
+                            Conditions = { new ConditionExpression("quoteid", ConditionOperator.Equal, entity.Id) }
+                        },
+                        TopCount = 1
+                    };
+
+                    var detailResult = _serviceClient.RetrieveMultiple(detailQuery);
+                    if (detailResult.Entities.Count > 0)
+                    {
+                        var productRef = detailResult.Entities[0].GetAttributeValue<EntityReference>("productid");
+                        if (productRef != null && productRef.Id != Guid.Empty)
+                        {
+                            quote.ProductId = productRef.Id;
+                            // Récupérer les détails du produit
+                            var productQuery = new QueryExpression("product")
+                            {
+                                ColumnSet = new ColumnSet("name", "productnumber"),
+                                Criteria = new FilterExpression
+                                {
+                                    Conditions = { new ConditionExpression("productid", ConditionOperator.Equal, productRef.Id) }
+                                }
+                            };
+
+                            var productResult = _serviceClient.RetrieveMultiple(productQuery);
+                            if (productResult.Entities.Count > 0)
+                            {
+                                var productEntity = productResult.Entities[0];
+                                quote.ProductName = productEntity.GetAttributeValue<string>("name") ?? "Non spécifié";
+                                quote.ProductNumber = productEntity.GetAttributeValue<string>("productnumber") ?? "";
+                            }
+                        }
+                    }
 
                     quotes.Add(quote);
                 }
@@ -605,7 +760,7 @@ namespace SAE_Dynamics_RGF.Data
                 // Requête pour les commandes
                 var query = new QueryExpression("salesorder")
                 {
-                    ColumnSet = new ColumnSet("name", "ordernumber", "customerid", "pricelevelid", "statecode", "statuscode", "totalamount", "createdon"),
+                    ColumnSet = new ColumnSet("name", "ordernumber", "customerid", "pricelevelid", "statecode", "statuscode", "totalamount", "createdon", "quoteid"),
                     Criteria = new FilterExpression
                     {
                         Conditions =
@@ -619,10 +774,79 @@ namespace SAE_Dynamics_RGF.Data
 
                 foreach (var entity in result.Entities)
                 {
+                    // Récupérer les informations du produit depuis les lignes de commande
+                    string productName = "Non spécifié";
+                    string productNumber = "";
+                    string quoteNumber = "";
+                    EntityReference productRef = null;
+
+                    // Récupérer le numéro de devis associé
+                    if (entity.Contains("quoteid"))
+                    {
+                        var quoteRef = entity.GetAttributeValue<EntityReference>("quoteid");
+                        if (quoteRef != null)
+                        {
+                            var quoteQuery = new QueryExpression("quote")
+                            {
+                                ColumnSet = new ColumnSet("quotenumber"),
+                                Criteria = new FilterExpression
+                                {
+                                    Conditions = { new ConditionExpression("quoteid", ConditionOperator.Equal, quoteRef.Id) }
+                                }
+                            };
+
+                            var quoteResult = _serviceClient.RetrieveMultiple(quoteQuery);
+                            if (quoteResult.Entities.Count > 0)
+                            {
+                                quoteNumber = quoteResult.Entities[0].GetAttributeValue<string>("quotenumber") ?? "";
+                            }
+                        }
+                    }
+
+                    // Récupérer les informations du produit depuis les lignes de commande
+                    var detailQuery = new QueryExpression("salesorderdetail")
+                    {
+                        ColumnSet = new ColumnSet("productid"),
+                        Criteria = new FilterExpression
+                        {
+                            Conditions = { new ConditionExpression("salesorderid", ConditionOperator.Equal, entity.Id) }
+                        },
+                        TopCount = 1
+                    };
+
+                    var detailResult = _serviceClient.RetrieveMultiple(detailQuery);
+                    if (detailResult.Entities.Count > 0)
+                    {
+                        productRef = detailResult.Entities[0].GetAttributeValue<EntityReference>("productid");
+                        if (productRef != null && productRef.Id != Guid.Empty)
+                        {
+                            // Récupérer les détails du produit
+                            var productQuery = new QueryExpression("product")
+                            {
+                                ColumnSet = new ColumnSet("name", "productnumber"),
+                                Criteria = new FilterExpression
+                                {
+                                    Conditions = { new ConditionExpression("productid", ConditionOperator.Equal, productRef.Id) }
+                                }
+                            };
+
+                            var productResult = _serviceClient.RetrieveMultiple(productQuery);
+                            if (productResult.Entities.Count > 0)
+                            {
+                                var productEntity = productResult.Entities[0];
+                                productName = productEntity.GetAttributeValue<string>("name") ?? "Non spécifié";
+                                productNumber = productEntity.GetAttributeValue<string>("productnumber") ?? "";
+                            }
+                        }
+                    }
+
                     var order = new SalesOrder
                     {
+                        Id = entity.Id,
                         Name = entity.GetAttributeValue<string>("name"),
                         OrderNumber = entity.GetAttributeValue<string>("ordernumber"),
+                        InvoiceNumber = null, // Le champ n'existe pas dans Dataverse
+                        QuoteNumber = quoteNumber,
                         CustomerId = entity.Contains("customerid")
                             ? entity.GetAttributeValue<EntityReference>("customerid").Name
                             : "Client inconnu",
@@ -638,7 +862,10 @@ namespace SAE_Dynamics_RGF.Data
                             : 0m,
                         CreatedOn = entity.Contains("createdon")
                             ? entity.GetAttributeValue<DateTime>("createdon")
-                            : DateTime.MinValue
+                            : DateTime.MinValue,
+                        ProductName = productName,
+                        ProductNumber = productNumber,
+                        ProductId = productRef != null ? productRef.Id : Guid.Empty
                     };
 
                     orders.Add(order);
@@ -670,6 +897,7 @@ namespace SAE_Dynamics_RGF.Data
                 {
                     var order = new SalesOrder
                     {
+                        Id = entity.Id,
                         Name = entity.GetAttributeValue<string>("name"),
                         OrderNumber = entity.GetAttributeValue<string>("ordernumber"),
                         CustomerId = entity.Contains("customerid")
@@ -701,137 +929,304 @@ namespace SAE_Dynamics_RGF.Data
             return orders;
         }
 
-        public (Contact Contact, string ErrorMessage) RegisterContact(
-            string firstName,
-            string lastName,
-            string email,
-            string identifiant,
-            string motDePasse,
-            DateTime? dateAnniversaire,
-            string mobilePhone)
+        public List<SalesOrderLine> GetSalesOrderLines(Guid salesOrderId)
         {
-            if (!IsConnected) return (null, "Connexion Dataverse indisponible.");
-
-            firstName = (firstName ?? string.Empty).Trim();
-            lastName = (lastName ?? string.Empty).Trim();
-            email = (email ?? string.Empty).Trim();
-            identifiant = (identifiant ?? string.Empty).Trim();
-            motDePasse = (motDePasse ?? string.Empty).Trim();
-            mobilePhone = (mobilePhone ?? string.Empty).Trim();
-
-            if (string.IsNullOrWhiteSpace(firstName) ||
-                string.IsNullOrWhiteSpace(lastName) ||
-                string.IsNullOrWhiteSpace(email) ||
-                string.IsNullOrWhiteSpace(identifiant) ||
-                string.IsNullOrWhiteSpace(motDePasse))
-            {
-                return (null, "Veuillez remplir tous les champs obligatoires.");
-            }
+            var lines = new List<SalesOrderLine>();
+            if (!IsConnected) return lines;
+            if (salesOrderId == Guid.Empty) return lines;
 
             try
             {
-                var duplicateQuery = new QueryExpression("contact")
+                var query = new QueryExpression("salesorderdetail")
                 {
-                    ColumnSet = new ColumnSet("emailaddress1", "crda6_identifiant"),
-                    TopCount = 5,
-                    Criteria = new FilterExpression
-                    {
-                        FilterOperator = LogicalOperator.Or,
-                        Conditions =
-                        {
-                            new ConditionExpression("emailaddress1", ConditionOperator.Equal, email),
-                            new ConditionExpression("crda6_identifiant", ConditionOperator.Equal, identifiant)
-                        }
-                    }
-                };
-
-                var dupResult = _serviceClient.RetrieveMultiple(duplicateQuery);
-                var duplicates = dupResult?.Entities?.ToList() ?? new List<Entity>();
-
-                var emailTaken = duplicates.Any(e => (e.GetAttributeValue<string>("emailaddress1") ?? string.Empty)
-                    .Equals(email, StringComparison.OrdinalIgnoreCase));
-                if (emailTaken) return (null, "Cet email est déjà utilisé.");
-
-                var idTaken = duplicates.Any(e => (e.GetAttributeValue<string>("crda6_identifiant") ?? string.Empty)
-                    .Equals(identifiant, StringComparison.OrdinalIgnoreCase));
-                if (idTaken) return (null, "Cet identifiant est déjà utilisé.");
-
-                var newContact = new Entity("contact")
-                {
-                    ["firstname"] = firstName,
-                    ["lastname"] = lastName,
-                    ["emailaddress1"] = email,
-                    ["crda6_identifiant"] = identifiant,
-                    ["crda6_motdepasse"] = motDePasse
-                };
-
-                if (dateAnniversaire.HasValue)
-                {
-                    newContact["crda6_datedanniversaire"] = dateAnniversaire.Value.Date;
-                }
-
-                if (!string.IsNullOrWhiteSpace(mobilePhone))
-                {
-                    newContact["mobilephone"] = mobilePhone;
-                }
-
-                var contactId = _serviceClient.Create(newContact);
-                if (contactId == Guid.Empty)
-                {
-                    return (null, "Erreur lors de la création du compte.");
-                }
-
-                return (new Contact
-                {
-                    Id = contactId,
-                    FullName = (firstName + " " + lastName).Trim(),
-                    Identifiant = identifiant
-                }, null);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Erreur lors de l'inscription (contact) : " + ex.Message);
-                return (null, "Erreur lors de l'inscription.");
-            }
-        }
-
-        public Contact AuthenticateContact(string identifiant, string motDePasse)
-        {
-            if (!IsConnected) return null;
-            if (string.IsNullOrWhiteSpace(identifiant) || string.IsNullOrWhiteSpace(motDePasse)) return null;
-
-            try
-            {
-                var query = new QueryExpression("contact")
-                {
-                    ColumnSet = new ColumnSet("fullname", "crda6_identifiant"),
-                    TopCount = 1,
+                    ColumnSet = new ColumnSet("productid", "quantity"),
                     Criteria = new FilterExpression
                     {
                         Conditions =
                         {
-                            new ConditionExpression("crda6_identifiant", ConditionOperator.Equal, identifiant),
-                            new ConditionExpression("crda6_motdepasse", ConditionOperator.Equal, motDePasse)
+                            new ConditionExpression("salesorderid", ConditionOperator.Equal, salesOrderId)
                         }
                     }
                 };
 
                 var result = _serviceClient.RetrieveMultiple(query);
-                var entity = result?.Entities?.FirstOrDefault();
-                if (entity == null) return null;
-
-                return new Contact
+                foreach (var entity in result.Entities)
                 {
-                    Id = entity.Id,
-                    FullName = entity.GetAttributeValue<string>("fullname") ?? identifiant,
-                    Identifiant = entity.GetAttributeValue<string>("crda6_identifiant")
-                };
+                    var productRef = entity.GetAttributeValue<EntityReference>("productid");
+                    if (productRef == null) continue;
+
+                    var line = new SalesOrderLine
+                    {
+                        ProductId = productRef.Id,
+                        ProductName = productRef.Name,
+                        Quantity = entity.GetAttributeValue<decimal?>("quantity") ?? 0m
+                    };
+
+                    lines.Add(line);
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Erreur lors de l'authentification (contact) : " + ex.Message);
-                return null;
+                Console.WriteLine("Erreur lors de la récupération des lignes de commande : " + ex.Message);
             }
+
+            return lines;
+        }
+
+        private string GenerateSavName(Guid contactId, string clientDescription)
+        {
+            if (!IsConnected) return clientDescription ?? "Demande SAV";
+            
+            try
+            {
+                // Récupérer le nom du client
+                string clientName = "Client";
+                try
+                {
+                    var contact = _serviceClient.Retrieve("contact", contactId, new ColumnSet("firstname", "lastname"));
+                    var firstName = contact.GetAttributeValue<string>("firstname") ?? "";
+                    var lastName = contact.GetAttributeValue<string>("lastname") ?? "";
+                    clientName = $"{firstName} {lastName}".Trim();
+                    if (string.IsNullOrWhiteSpace(clientName))
+                        clientName = "Client";
+                }
+                catch
+                {
+                    // Si on ne peut pas récupérer le nom, on utilise "Client"
+                }
+
+                // Compter les demandes SAV existantes pour ce client
+                int savCount = 0;
+                try
+                {
+                    var query = new QueryExpression("crda6_sav")
+                    {
+                        ColumnSet = new ColumnSet("crda6_name"),
+                        Criteria = new FilterExpression
+                        {
+                            Conditions =
+                            {
+                                new ConditionExpression("crda6_clients", ConditionOperator.Equal, contactId)
+                            }
+                        }
+                    };
+
+                    var result = _serviceClient.RetrieveMultiple(query);
+                    savCount = result.Entities.Count;
+                }
+                catch
+                {
+                    // Si erreur, on considère qu'il n'y a pas de demandes existantes
+                }
+
+                // Générer le numéro SAV incrémenté
+                string savNumber = $"SAV{(savCount + 1):D2}";
+                
+                // Nettoyer la description du client
+                string cleanDescription = (clientDescription ?? "").Trim();
+                if (string.IsNullOrWhiteSpace(cleanDescription))
+                    cleanDescription = "Demande SAV";
+
+                // Assembler le nom final
+                string finalName = $"{clientName} - {savNumber} - {cleanDescription}";
+                
+                // Limiter la longueur si nécessaire (max 100 caractères pour les champs Dataverse)
+                if (finalName.Length > 100)
+                {
+                    cleanDescription = cleanDescription.Length > 30 ? cleanDescription.Substring(0, 27) + "..." : cleanDescription;
+                    finalName = $"{clientName} - {savNumber} - {cleanDescription}";
+                    if (finalName.Length > 100)
+                    {
+                        clientName = clientName.Length > 20 ? clientName.Substring(0, 17) + "..." : clientName;
+                        finalName = $"{clientName} - {savNumber} - {cleanDescription}";
+                    }
+                }
+
+                return finalName;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur génération nom SAV: {ex.Message}");
+                return clientDescription ?? "Demande SAV";
+            }
+        }
+
+        public (Guid? SavId, string ErrorMessage) CreateSavRequest(
+            Guid contactId,
+            Guid productId,
+            string name,
+            string description,
+            DateTime? purchaseDate,
+            int? diagnostic = null,
+            byte[] photoData = null,
+            string photoFileName = null)
+        {
+            if (!IsConnected) return (null, "Connexion Dataverse indisponible.");
+            if (contactId == Guid.Empty) return (null, "Client invalide.");
+            if (productId == Guid.Empty) return (null, "Produit invalide.");
+
+            name = (name ?? string.Empty).Trim();
+            description = (description ?? string.Empty).Trim();
+
+            if (string.IsNullOrWhiteSpace(name)) return (null, "Le nom est obligatoire.");
+
+            try
+            {
+                // Générer automatiquement le nom de la demande SAV
+                string autoGeneratedName = GenerateSavName(contactId, name);
+                
+                var sav = new Entity("crda6_sav")
+                {
+                    ["crda6_name"] = autoGeneratedName,
+                    ["crda6_clients"] = new EntityReference("contact", contactId),
+                    ["crda6_produitconcerne"] = new EntityReference("product", productId)
+                };
+
+                if (!string.IsNullOrWhiteSpace(description))
+                {
+                    sav["crda6_description"] = description;
+                }
+
+                if (purchaseDate.HasValue)
+                {
+                    sav["crda6_datedachat"] = purchaseDate.Value.Date;
+                }
+
+                if (diagnostic.HasValue)
+                {
+                    sav["crda6_diagnostic"] = new OptionSetValue(diagnostic.Value);
+                }
+
+                if (photoData != null && !string.IsNullOrEmpty(photoFileName))
+                {
+                    try
+                    {
+                        // Méthode 1: Essayer direct sur l'entité
+                        sav["crda6_photo"] = photoData;
+                        Console.WriteLine($"Photo ajoutée directement - Taille: {photoData.Length} bytes, Nom: {photoFileName}");
+                    }
+                    catch (Exception photoEx)
+                    {
+                        Console.WriteLine($"Erreur ajout direct photo: {photoEx.Message}");
+                        // La photo sera ajoutée via annotation après la création de l'entité
+                    }
+                }
+
+                var savId = _serviceClient.Create(sav);
+                if (savId == Guid.Empty) return (null, "Création de la demande SAV impossible.");
+
+                // Créer l'annotation (pièce jointe) après la création de l'entité principale
+                if (photoData != null && !string.IsNullOrEmpty(photoFileName))
+                {
+                    try
+                    {
+                        var annotation = new Entity("annotation")
+                        {
+                            ["objectid"] = new EntityReference("crda6_sav", savId),
+                            ["objecttypecode"] = 10001, // Code numérique pour entité personnalisée
+                            ["objectidtypecode"] = 10001, // Doit être identique à objecttypecode
+                            ["subject"] = "Photo SAV",
+                            ["filename"] = photoFileName,
+                            ["mimetype"] = GetMimeType(photoFileName),
+                            ["documentbody"] = Convert.ToBase64String(photoData),
+                            ["notetext"] = "Photo jointe à la demande SAV"
+                        };
+                        
+                        var annotationId = _serviceClient.Create(annotation);
+                        Console.WriteLine($"Annotation créée avec succès - ID: {annotationId}");
+                    }
+                    catch (Exception annotationEx)
+                    {
+                        Console.WriteLine($"Erreur création annotation: {annotationEx.Message}");
+                        // Ne pas échouer la création SAV si l'annotation échoue
+                    }
+                }
+
+                return (savId, string.Empty);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erreur lors de la création de la demande SAV : " + ex.Message);
+                return (null, ex.Message);
+            }
+        }
+
+        public List<SavRequest> GetSavRequestsForContact(Guid contactId)
+        {
+            var items = new List<SavRequest>();
+            if (!IsConnected) return items;
+            if (contactId == Guid.Empty) return items;
+
+            try
+            {
+                var query = new QueryExpression("crda6_sav")
+                {
+                    ColumnSet = new ColumnSet(
+                        "crda6_name",
+                        "crda6_clients",
+                        "crda6_produitconcerne",
+                        "crda6_description",
+                        "crda6_datedachat",
+                        "createdon"),
+                    Criteria = new FilterExpression
+                    {
+                        Conditions =
+                        {
+                            new ConditionExpression("crda6_clients", ConditionOperator.Equal, contactId)
+                        }
+                    },
+                    Orders =
+                    {
+                        new OrderExpression("createdon", OrderType.Descending)
+                    }
+                };
+
+                var result = _serviceClient.RetrieveMultiple(query);
+                foreach (var entity in result.Entities)
+                {
+                    var productRef = entity.GetAttributeValue<EntityReference>("crda6_produitconcerne");
+                    string productName = productRef?.Name ?? "Non spécifié";
+                    string productNumber = "";
+
+                    if (productRef != null)
+                    {
+                        // Récupérer les détails du produit
+                        var productQuery = new QueryExpression("product")
+                        {
+                            ColumnSet = new ColumnSet("productnumber"),
+                            Criteria = new FilterExpression
+                            {
+                                Conditions = { new ConditionExpression("productid", ConditionOperator.Equal, productRef.Id) }
+                            }
+                        };
+
+                        var productResult = _serviceClient.RetrieveMultiple(productQuery);
+                        if (productResult.Entities.Count > 0)
+                        {
+                            var productEntity = productResult.Entities[0];
+                            productNumber = productEntity.GetAttributeValue<string>("productnumber") ?? "";
+                        }
+                    }
+
+                    items.Add(new SavRequest
+                    {
+                        Id = entity.Id,
+                        Name = entity.GetAttributeValue<string>("crda6_name") ?? string.Empty,
+                        ProductName = productName,
+                        ProductNumber = productNumber,
+                        PurchaseDate = entity.GetAttributeValue<DateTime?>("crda6_datedachat"),
+                        Description = entity.GetAttributeValue<string>("crda6_description") ?? string.Empty,
+                        CreatedOn = entity.GetAttributeValue<DateTime?>("createdon"),
+                        ProductId = productRef != null ? productRef.Id : Guid.Empty
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erreur lors de la récupération des demandes SAV : " + ex.Message);
+            }
+
+            return items;
         }
 
         public List<CurrencyOption> GetCurrencies()
@@ -843,7 +1238,7 @@ namespace SAE_Dynamics_RGF.Data
             {
                 var query = new QueryExpression("transactioncurrency")
                 {
-                    ColumnSet = new ColumnSet("currencyname", "isocurrencycode")
+                    ColumnSet = new ColumnSet("isocurrencycode", "currencyname")
                 };
 
                 var result = _serviceClient.RetrieveMultiple(query);
@@ -852,8 +1247,8 @@ namespace SAE_Dynamics_RGF.Data
                     currencies.Add(new CurrencyOption
                     {
                         Id = entity.Id,
-                        Name = entity.GetAttributeValue<string>("currencyname") ?? entity.GetAttributeValue<string>("isocurrencycode") ?? entity.Id.ToString(),
-                        IsoCode = NormalizeCurrencyCode(entity.GetAttributeValue<string>("isocurrencycode")) ?? entity.GetAttributeValue<string>("isocurrencycode")
+                        Name = entity.GetAttributeValue<string>("currencyname") ?? "Inconnue",
+                        IsoCode = entity.GetAttributeValue<string>("isocurrencycode") ?? "N/A"
                     });
                 }
             }
@@ -865,105 +1260,463 @@ namespace SAE_Dynamics_RGF.Data
             return currencies;
         }
 
+        public SiteWebContent GetSiteWebContent()
+        {
+            if (!IsConnected) return new SiteWebContent();
+
+            try
+            {
+                var query = new QueryExpression("crda6_siteweb")
+                {
+                    ColumnSet = new ColumnSet(
+                        "crda6_title", "crda6_content", "createdon",
+                        // More page fields
+                        "crda6_morebadgefr", "crda6_morebadgeen",
+                        "crda6_moreherotitlefr", "crda6_moreherotitleen",
+                        "crda6_moreherosubtitlefr", "crda6_moreherosubtitleen",
+                        "crda6_moreheroimageurl",
+                        "crda6_morestorytitlefr", "crda6_morestorytitleen",
+                        "crda6_morestorytextfr", "crda6_morestorytexten",
+                        "crda6_morevaluestitlefr", "crda6_morevaluestitleen",
+                        "crda6_morevaluestextfr", "crda6_morevaluestexten",
+                        "crda6_moreteamtitlefr", "crda6_moreteamtitleen",
+                        "crda6_moreteamtextfr", "crda6_moreteamtexten",
+                        "crda6_morenexttitlefr", "crda6_morenexttitleen",
+                        "crda6_morenexttextfr", "crda6_morenexttexten",
+                        // News page fields
+                        "crda6_newsbadgefr", "crda6_newsbadgeen",
+                        "crda6_newsherotitlefr", "crda6_newsherotitleen",
+                        "crda6_newsherosubtitlefr", "crda6_newsherosubtitleen",
+                        "crda6_newsheroimageurl",
+                        "crda6_newsarticle1imageurl",
+                        "crda6_newsarticle1titlefr", "crda6_newsarticle1titleen",
+                        "crda6_newsarticle1textfr", "crda6_newsarticle1texten",
+                        "crda6_newsarticle1date",
+                        "crda6_newsarticle1readtimefr", "crda6_newsarticle1readtimeen",
+                        "crda6_newsarticle2imageurl",
+                        "crda6_newsarticle2titlefr", "crda6_newsarticle2titleen",
+                        "crda6_newsarticle2textfr", "crda6_newsarticle2texten"
+                    ),
+                    TopCount = 1
+                };
+
+                var result = _serviceClient.RetrieveMultiple(query);
+                if (result.Entities.Count > 0)
+                {
+                    var entity = result.Entities[0];
+                    return new SiteWebContent
+                    {
+                        Title = entity.GetAttributeValue<string>("crda6_title") ?? "Contenu non disponible",
+                        Content = entity.GetAttributeValue<string>("crda6_content") ?? "Le contenu est en cours de chargement.",
+                        CreatedOn = entity.GetAttributeValue<DateTime?>("createdon"),
+
+                        // More page properties
+                        MoreBadgeFr = entity.GetAttributeValue<string>("crda6_morebadgefr") ?? "À propos",
+                        MoreBadgeEn = entity.GetAttributeValue<string>("crda6_morebadgeen") ?? "About",
+                        MoreHeroTitleFr = entity.GetAttributeValue<string>("crda6_moreherotitlefr") ?? "Découvrez notre histoire",
+                        MoreHeroTitleEn = entity.GetAttributeValue<string>("crda6_moreherotitleen") ?? "Discover our story",
+                        MoreHeroSubtitleFr = entity.GetAttributeValue<string>("crda6_moreherosubtitlefr") ?? "Plus de 10 ans d'expertise à votre service",
+                        MoreHeroSubtitleEn = entity.GetAttributeValue<string>("crda6_moreherosubtitleen") ?? "Over 10 years of expertise at your service",
+                        MoreHeroImageUrl = entity.GetAttributeValue<string>("crda6_moreheroimageurl"),
+                        MoreStoryTitleFr = entity.GetAttributeValue<string>("crda6_morestorytitlefr") ?? "Notre histoire",
+                        MoreStoryTitleEn = entity.GetAttributeValue<string>("crda6_morestorytitleen") ?? "Our story",
+                        MoreStoryTextFr = entity.GetAttributeValue<string>("crda6_morestorytextfr") ?? "Depuis notre création, nous nous engageons à fournir les meilleures solutions.",
+                        MoreStoryTextEn = entity.GetAttributeValue<string>("crda6_morestorytexten") ?? "Since our creation, we have been committed to providing the best solutions.",
+                        MoreValuesTitleFr = entity.GetAttributeValue<string>("crda6_morevaluestitlefr") ?? "Nos valeurs",
+                        MoreValuesTitleEn = entity.GetAttributeValue<string>("crda6_morevaluestitleen") ?? "Our values",
+                        MoreValuesTextFr = entity.GetAttributeValue<string>("crda6_morevaluestextfr") ?? "Innovation, qualité et satisfaction client sont nos piliers.",
+                        MoreValuesTextEn = entity.GetAttributeValue<string>("crda6_morevaluestexten") ?? "Innovation, quality and customer satisfaction are our pillars.",
+                        MoreTeamTitleFr = entity.GetAttributeValue<string>("crda6_moreteamtitlefr") ?? "Notre équipe",
+                        MoreTeamTitleEn = entity.GetAttributeValue<string>("crda6_moreteamtitleen") ?? "Our team",
+                        MoreTeamTextFr = entity.GetAttributeValue<string>("crda6_moreteamtextfr") ?? "Des experts passionnés à votre écoute.",
+                        MoreTeamTextEn = entity.GetAttributeValue<string>("crda6_moreteamtexten") ?? "Passionate experts listening to you.",
+                        MoreNextTitleFr = entity.GetAttributeValue<string>("crda6_morenexttitlefr") ?? "Prochaines étapes",
+                        MoreNextTitleEn = entity.GetAttributeValue<string>("crda6_morenexttitleen") ?? "Next steps",
+                        MoreNextTextFr = entity.GetAttributeValue<string>("crda6_morenexttextfr") ?? "Contactez-nous pour discuter de vos projets.",
+                        MoreNextTextEn = entity.GetAttributeValue<string>("crda6_morenexttexten") ?? "Contact us to discuss your projects.",
+
+                        // News page properties
+                        NewsBadgeFr = entity.GetAttributeValue<string>("crda6_newsbadgefr") ?? "Actualités",
+                        NewsBadgeEn = entity.GetAttributeValue<string>("crda6_newsbadgeen") ?? "News",
+                        NewsHeroTitleFr = entity.GetAttributeValue<string>("crda6_newsherotitlefr") ?? "Dernières actualités",
+                        NewsHeroTitleEn = entity.GetAttributeValue<string>("crda6_newsherotitleen") ?? "Latest news",
+                        NewsHeroSubtitleFr = entity.GetAttributeValue<string>("crda6_newsherosubtitlefr") ?? "Restez informé de nos dernières nouveautés",
+                        NewsHeroSubtitleEn = entity.GetAttributeValue<string>("crda6_newsherosubtitleen") ?? "Stay informed about our latest news",
+                        NewsHeroImageUrl = entity.GetAttributeValue<string>("crda6_newsheroimageurl"),
+                        NewsArticle1ImageUrl = entity.GetAttributeValue<string>("crda6_newsarticle1imageurl"),
+                        NewsArticle1TitleFr = entity.GetAttributeValue<string>("crda6_newsarticle1titlefr") ?? "Nouveau lancement",
+                        NewsArticle1TitleEn = entity.GetAttributeValue<string>("crda6_newsarticle1titleen") ?? "New launch",
+                        NewsArticle1TextFr = entity.GetAttributeValue<string>("crda6_newsarticle1textfr") ?? "Découvrez nos dernières innovations.",
+                        NewsArticle1TextEn = entity.GetAttributeValue<string>("crda6_newsarticle1texten") ?? "Discover our latest innovations.",
+                        NewsArticle1Date = entity.GetAttributeValue<string>("crda6_newsarticle1date") ?? DateTime.Now.ToString("dd MMMM yyyy"),
+                        NewsArticle1ReadTimeFr = entity.GetAttributeValue<string>("crda6_newsarticle1readtimefr") ?? "5 min de lecture",
+                        NewsArticle1ReadTimeEn = entity.GetAttributeValue<string>("crda6_newsarticle1readtimeen") ?? "5 min read",
+                        NewsArticle2ImageUrl = entity.GetAttributeValue<string>("crda6_newsarticle2imageurl"),
+                        NewsArticle2TitleFr = entity.GetAttributeValue<string>("crda6_newsarticle2titlefr") ?? "Événement à venir",
+                        NewsArticle2TitleEn = entity.GetAttributeValue<string>("crda6_newsarticle2titleen") ?? "Upcoming event",
+                        NewsArticle2TextFr = entity.GetAttributeValue<string>("crda6_newsarticle2textfr") ?? "Rejoignez-nous pour notre prochain événement.",
+                        NewsArticle2TextEn = entity.GetAttributeValue<string>("crda6_newsarticle2texten") ?? "Join us for our next event."
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erreur lors de la récupération du contenu site web : " + ex.Message);
+            }
+
+            // Return default content if nothing found or error
+            return new SiteWebContent
+            {
+                Title = "Contenu par défaut",
+                Content = "Le contenu est en cours de chargement.",
+
+                // More page defaults
+                MoreBadgeFr = "À propos",
+                MoreBadgeEn = "About",
+                MoreHeroTitleFr = "Découvrez notre histoire",
+                MoreHeroTitleEn = "Discover our story",
+                MoreHeroSubtitleFr = "Plus de 10 ans d'expertise à votre service",
+                MoreHeroSubtitleEn = "Over 10 years of expertise at your service",
+                MoreStoryTitleFr = "Notre histoire",
+                MoreStoryTitleEn = "Our story",
+                MoreStoryTextFr = "Depuis notre création, nous nous engageons à fournir les meilleures solutions.",
+                MoreStoryTextEn = "Since our creation, we have been committed to providing the best solutions.",
+                MoreValuesTitleFr = "Nos valeurs",
+                MoreValuesTitleEn = "Our values",
+                MoreValuesTextFr = "Innovation, qualité et satisfaction client sont nos piliers.",
+                MoreValuesTextEn = "Innovation, quality and customer satisfaction are our pillars.",
+                MoreTeamTitleFr = "Notre équipe",
+                MoreTeamTitleEn = "Our team",
+                MoreTeamTextFr = "Des experts passionnés à votre écoute.",
+                MoreTeamTextEn = "Passionate experts listening to you.",
+                MoreNextTitleFr = "Prochaines étapes",
+                MoreNextTitleEn = "Next steps",
+                MoreNextTextFr = "Contactez-nous pour discuter de vos projets.",
+                MoreNextTextEn = "Contact us to discuss your projects.",
+
+                // News page defaults
+                NewsBadgeFr = "Actualités",
+                NewsBadgeEn = "News",
+                NewsHeroTitleFr = "Dernières actualités",
+                NewsHeroTitleEn = "Latest news",
+                NewsHeroSubtitleFr = "Restez informé de nos dernières nouveautés",
+                NewsHeroSubtitleEn = "Stay informed about our latest news",
+                NewsArticle1TitleFr = "Nouveau lancement",
+                NewsArticle1TitleEn = "New launch",
+                NewsArticle1TextFr = "Découvrez nos dernières innovations.",
+                NewsArticle1TextEn = "Discover our latest innovations.",
+                NewsArticle1Date = DateTime.Now.ToString("dd MMMM yyyy"),
+                NewsArticle1ReadTimeFr = "5 min de lecture",
+                NewsArticle1ReadTimeEn = "5 min read",
+                NewsArticle2TitleFr = "Événement à venir",
+                NewsArticle2TitleEn = "Upcoming event",
+                NewsArticle2TextFr = "Rejoignez-nous pour notre prochain événement.",
+                NewsArticle2TextEn = "Join us for our next event."
+            };
+        }
+
+        public List<Avis> GetAvisByProduct(Guid productId)
+        {
+            var avisList = new List<Avis>();
+            if (!IsConnected || productId == Guid.Empty) return avisList;
+
+            try
+            {
+                var query = new QueryExpression("crda6_avis")
+                {
+                    ColumnSet = new ColumnSet("crda6_name", "crda6_description", "crda6_note", "createdon", "createdby"),
+                    Criteria = new FilterExpression
+                    {
+                        Conditions =
+                        {
+                            new ConditionExpression("crda6_produit", ConditionOperator.Equal, productId)
+                        }
+                    },
+                    Orders =
+                    {
+                        new OrderExpression("createdon", OrderType.Descending)
+                    }
+                };
+
+                var result = _serviceClient.RetrieveMultiple(query);
+                foreach (var entity in result.Entities)
+                {
+                    var createdByRef = entity.GetAttributeValue<EntityReference>("createdby");
+                    avisList.Add(new Avis
+                    {
+                        Id = entity.Id,
+                        Title = entity.GetAttributeValue<string>("crda6_name") ?? "Sans titre",
+                        Description = entity.GetAttributeValue<string>("crda6_description") ?? "Sans description",
+                        Note = entity.GetAttributeValue<int?>("crda6_note"),
+                        CreatedOn = entity.GetAttributeValue<DateTime?>("createdon"),
+                        CreatedByName = createdByRef?.Name ?? "Anonyme"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erreur lors de la récupération des avis : " + ex.Message);
+            }
+
+            return avisList;
+        }
+
+        public (Guid? AvisId, string ErrorMessage) CreateAvis(
+            Guid contactId,
+            Guid productId,
+            string title,
+            string description,
+            int note)
+        {
+            if (!IsConnected) return (null, "Connexion Dataverse indisponible.");
+            if (contactId == Guid.Empty) return (null, "Client invalide.");
+            if (productId == Guid.Empty) return (null, "Produit invalide.");
+
+            title = (title ?? string.Empty).Trim();
+            description = (description ?? string.Empty).Trim();
+
+            if (string.IsNullOrWhiteSpace(title)) return (null, "Le titre est obligatoire.");
+
+            try
+            {
+                var avis = new Entity("crda6_avis")
+                {
+                    ["crda6_name"] = title,
+                    ["crda6_client"] = new EntityReference("contact", contactId),
+                    ["crda6_produit"] = new EntityReference("product", productId),
+                    ["crda6_note"] = note
+                };
+
+                if (!string.IsNullOrWhiteSpace(description))
+                {
+                    avis["crda6_description"] = description;
+                }
+
+                var avisId = _serviceClient.Create(avis);
+                if (avisId == Guid.Empty) return (null, "Création de l'avis impossible.");
+                return (avisId, string.Empty);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erreur lors de la création de l'avis : " + ex.Message);
+                return (null, ex.Message);
+            }
+        }
+
+        public List<SalesOrder> GetInvoicesForContact(Guid contactId)
+        {
+            var invoices = new List<SalesOrder>();
+            if (!IsConnected) return invoices;
+            if (contactId == Guid.Empty) return invoices;
+
+            try
+            {
+                // Récupérer les comptes dont le contact est le contact principal
+                var accountIds = new List<Guid>();
+                var accountQuery = new QueryExpression("account")
+                {
+                    ColumnSet = new ColumnSet(false),
+                    Criteria = new FilterExpression
+                    {
+                        Conditions =
+                        {
+                            new ConditionExpression("primarycontactid", ConditionOperator.Equal, contactId)
+                        }
+                    }
+                };
+
+                var accountResult = _serviceClient.RetrieveMultiple(accountQuery);
+                foreach (var account in accountResult.Entities)
+                {
+                    accountIds.Add(account.Id);
+                }
+
+                // Liste des IDs autorisés : le contact + ses comptes
+                var allowedCustomerIds = new List<Guid> { contactId };
+                allowedCustomerIds.AddRange(accountIds);
+
+                // Requête pour les factures depuis l'entité invoice
+                var query = new QueryExpression("invoice")
+                {
+                    ColumnSet = new ColumnSet("name", "invoicenumber", "customerid", "statecode", "statuscode", "totalamount", "createdon", "salesorderid"),
+                    Criteria = new FilterExpression
+                    {
+                        Conditions =
+                        {
+                            new ConditionExpression("customerid", ConditionOperator.In, allowedCustomerIds.Cast<object>().ToArray())
+                        }
+                    }
+                };
+
+                var result = _serviceClient.RetrieveMultiple(query);
+
+                foreach (var entity in result.Entities)
+                {
+                    // Récupérer les informations du produit depuis la commande associée
+                    string productName = "Non spécifié";
+                    string productNumber = "";
+                    string quoteNumber = "";
+                    string orderNumber = "";
+                    EntityReference productRef = null;
+
+                    // Récupérer le numéro de commande associé
+                    if (entity.Contains("salesorderid"))
+                    {
+                        var orderRef = entity.GetAttributeValue<EntityReference>("salesorderid");
+                        if (orderRef != null)
+                        {
+                            // Récupérer les détails de la commande
+                            var orderQuery = new QueryExpression("salesorder")
+                            {
+                                ColumnSet = new ColumnSet("ordernumber", "quoteid"),
+                                Criteria = new FilterExpression
+                                {
+                                    Conditions = { new ConditionExpression("salesorderid", ConditionOperator.Equal, orderRef.Id) }
+                                }
+                            };
+
+                            var orderResult = _serviceClient.RetrieveMultiple(orderQuery);
+                            if (orderResult.Entities.Count > 0)
+                            {
+                                var orderEntity = orderResult.Entities[0];
+                                orderNumber = orderEntity.GetAttributeValue<string>("ordernumber") ?? "";
+
+                                // Récupérer le numéro de devis associé à la commande
+                                if (orderEntity.Contains("quoteid"))
+                                {
+                                    var quoteRef = orderEntity.GetAttributeValue<EntityReference>("quoteid");
+                                    if (quoteRef != null)
+                                    {
+                                        var quoteQuery = new QueryExpression("quote")
+                                        {
+                                            ColumnSet = new ColumnSet("quotenumber"),
+                                            Criteria = new FilterExpression
+                                            {
+                                                Conditions = { new ConditionExpression("quoteid", ConditionOperator.Equal, quoteRef.Id) }
+                                            }
+                                        };
+
+                                        var quoteResult = _serviceClient.RetrieveMultiple(quoteQuery);
+                                        if (quoteResult.Entities.Count > 0)
+                                        {
+                                            quoteNumber = quoteResult.Entities[0].GetAttributeValue<string>("quotenumber") ?? "";
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Récupérer les informations du produit depuis les lignes de commande
+                            var detailQuery = new QueryExpression("salesorderdetail")
+                            {
+                                ColumnSet = new ColumnSet("productid"),
+                                Criteria = new FilterExpression
+                                {
+                                    Conditions = { new ConditionExpression("salesorderid", ConditionOperator.Equal, orderRef.Id) }
+                                },
+                                TopCount = 1
+                            };
+
+                            var detailResult = _serviceClient.RetrieveMultiple(detailQuery);
+                            if (detailResult.Entities.Count > 0)
+                            {
+                                EntityReference outerProductRef = detailResult.Entities[0].GetAttributeValue<EntityReference>("productid");
+                                if (outerProductRef != null && outerProductRef.Id != Guid.Empty)
+                                {
+                                    productRef = outerProductRef;
+                                    // Récupérer les détails du produit
+                                    var productQuery = new QueryExpression("product")
+                                    {
+                                        ColumnSet = new ColumnSet("name", "productnumber"),
+                                        Criteria = new FilterExpression
+                                        {
+                                            Conditions = { new ConditionExpression("productid", ConditionOperator.Equal, productRef.Id) }
+                                        }
+                                    };
+
+                                    var productResult = _serviceClient.RetrieveMultiple(productQuery);
+                                    if (productResult.Entities.Count > 0)
+                                    {
+                                        var productEntity = productResult.Entities[0];
+                                        productName = productEntity.GetAttributeValue<string>("name") ?? "Non spécifié";
+                                        productNumber = productEntity.GetAttributeValue<string>("productnumber") ?? "";
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    var invoice = new SalesOrder
+                    {
+                        Id = entity.Id,
+                        Name = entity.GetAttributeValue<string>("name"),
+                        OrderNumber = orderNumber,
+                        InvoiceNumber = entity.GetAttributeValue<string>("invoicenumber"),
+                        QuoteNumber = quoteNumber,
+                        CustomerId = entity.Contains("customerid")
+                            ? entity.GetAttributeValue<EntityReference>("customerid").Name
+                            : "Client inconnu",
+                        PriceLevelId = "Non défini",
+                        StateCode = entity.Contains("statecode")
+                            ? entity.FormattedValues["statecode"]
+                            : "Inconnu",
+                        StatusCode = entity.GetAttributeValue<OptionSetValue>("statuscode")?.Value,
+                        TotalAmount = entity.Contains("totalamount")
+                            ? entity.GetAttributeValue<Money>("totalamount").Value
+                            : 0m,
+                        CreatedOn = entity.Contains("createdon")
+                            ? entity.GetAttributeValue<DateTime>("createdon")
+                            : DateTime.MinValue,
+                        ProductName = productName,
+                        ProductNumber = productNumber,
+                        ProductId = productRef != null ? productRef.Id : Guid.Empty
+                    };
+
+                    invoices.Add(invoice);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erreur lors de la récupération des factures : " + ex.Message);
+            }
+
+            return invoices;
+        }
+
         public (Guid? OpportunityId, string ErrorMessage) CreateOpportunityWithProduct(
             Guid contactId,
             Guid productId,
             Guid currencyId,
-            string name,
+            string rubrique,
             string description)
         {
             if (!IsConnected) return (null, "Connexion Dataverse indisponible.");
-            if (contactId == Guid.Empty) return (null, "Contact invalide.");
+            if (contactId == Guid.Empty) return (null, "Client invalide.");
             if (productId == Guid.Empty) return (null, "Produit invalide.");
-            if (currencyId == Guid.Empty) return (null, "Devise invalide.");
-            if (string.IsNullOrWhiteSpace(name)) return (null, "Le champ rubrique est obligatoire.");
+
+            rubrique = (rubrique ?? string.Empty).Trim();
+            description = (description ?? string.Empty).Trim();
+
+            if (string.IsNullOrWhiteSpace(rubrique)) return (null, "La rubrique est obligatoire.");
 
             try
             {
-                Guid? priceLevelId = null;
-                try
-                {
-                    var priceListQuery = new QueryExpression("pricelevel")
-                    {
-                        ColumnSet = new ColumnSet("pricelevelid", "name"),
-                        TopCount = 1,
-                        Criteria = new FilterExpression
-                        {
-                            Conditions =
-                            {
-                                new ConditionExpression("transactioncurrencyid", ConditionOperator.Equal, currencyId)
-                            }
-                        }
-                    };
-
-                    var plResult = _serviceClient.RetrieveMultiple(priceListQuery);
-                    var pl = plResult?.Entities?.FirstOrDefault();
-                    if (pl != null) priceLevelId = pl.Id;
-                }
-                catch
-                {
-                    priceLevelId = null;
-                }
-
                 var opportunity = new Entity("opportunity")
                 {
-                    ["name"] = name.Trim(),
-                    ["description"] = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
-                    ["transactioncurrencyid"] = new EntityReference("transactioncurrency", currencyId),
+                    ["name"] = rubrique,
                     ["parentcontactid"] = new EntityReference("contact", contactId),
-                    ["customerid"] = new EntityReference("contact", contactId),
-                    ["crda6_depuislesiteweb"] = true
+                    ["transactioncurrencyid"] = new EntityReference("transactioncurrency", currencyId),
+                    ["description"] = description
                 };
-
-                if (priceLevelId.HasValue)
-                {
-                    opportunity["pricelevelid"] = new EntityReference("pricelevel", priceLevelId.Value);
-                }
 
                 var opportunityId = _serviceClient.Create(opportunity);
-                if (opportunityId == Guid.Empty)
-                {
-                    return (null, "Erreur lors de la création de l'opportunité.");
-                }
+                if (opportunityId == Guid.Empty) return (null, "Création de l'opportunité impossible.");
 
-                EntityReference unitRef = null;
-                try
-                {
-                    var product = _serviceClient.Retrieve("product", productId, new ColumnSet("defaultuomid"));
-                    unitRef = product?.GetAttributeValue<EntityReference>("defaultuomid");
-                }
-                catch
-                {
-                    unitRef = null;
-                }
-
-                if (unitRef == null || unitRef.Id == Guid.Empty)
-                {
-                    return (opportunityId, "Impossible de déterminer l'unité du produit (defaultuomid).");
-                }
-
-                var opportunityProduct = new Entity("opportunityproduct")
-                {
-                    ["opportunityid"] = new EntityReference("opportunity", opportunityId),
-                    ["productid"] = new EntityReference("product", productId),
-                    ["uomid"] = unitRef,
-                    ["quantity"] = 1m,
-                    ["ispriceoverridden"] = false,
-                    ["isproductoverridden"] = false
-                };
-
-                var oppProdId = _serviceClient.Create(opportunityProduct);
-                if (oppProdId == Guid.Empty)
-                {
-                    return (opportunityId, "L'opportunité a été créée mais l'ajout du produit a échoué.");
-                }
-
-                return (opportunityId, null);
+                return (opportunityId, string.Empty);
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Erreur lors de la création de l'opportunité avec produit : " + ex.Message);
-                return (null, "Erreur lors de la création de la demande.");
+                Console.WriteLine("Erreur lors de la création de l'opportunité : " + ex.Message);
+                return (null, ex.Message);
             }
         }
 
@@ -984,6 +1737,10 @@ namespace SAE_Dynamics_RGF.Data
                         {
                             new ConditionExpression("parentcontactid", ConditionOperator.Equal, contactId)
                         }
+                    },
+                    Orders =
+                    {
+                        new OrderExpression("createdon", OrderType.Descending)
                     }
                 };
 
@@ -993,379 +1750,20 @@ namespace SAE_Dynamics_RGF.Data
                     opportunities.Add(new Opportunity
                     {
                         Id = entity.Id,
-                        Name = entity.GetAttributeValue<string>("name") ?? string.Empty,
-                        StateCode = entity.Contains("statecode") ? entity.FormattedValues["statecode"] : "",
+                        Name = entity.GetAttributeValue<string>("name") ?? "Sans nom",
+                        StateCode = entity.Contains("statecode") ? entity.FormattedValues["statecode"] : "Inconnu",
                         StatusCode = entity.GetAttributeValue<OptionSetValue>("statuscode")?.Value,
-                        CreatedOn = entity.Contains("createdon") ? entity.GetAttributeValue<DateTime>("createdon") : DateTime.MinValue,
+                        CreatedOn = entity.GetAttributeValue<DateTime>("createdon"),
                         EstimatedValue = entity.GetAttributeValue<Money>("estimatedvalue")?.Value ?? 0m
                     });
                 }
-
-                opportunities = opportunities
-                    .OrderByDescending(o => o.CreatedOn)
-                    .ToList();
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Erreur lors de la récupération des opportunités (filtrées) : " + ex.Message);
+                Console.WriteLine("Erreur lors de la récupération des opportunités : " + ex.Message);
             }
 
             return opportunities;
-        }
-
-        public List<Avis> GetAvisByProduct(Guid productId)
-        {
-            var avisList = new List<Avis>();
-            if (!IsConnected) return avisList;
-            if (productId == Guid.Empty) return avisList;
-
-            try
-            {
-                var query = new QueryExpression("crda6_avis")
-                {
-                    ColumnSet = new ColumnSet("crda6_name", "crda6_description", "crda6_note", "createdon", "crda6_client", "crda6_produit"),
-                    Criteria = new FilterExpression
-                    {
-                        Conditions =
-                        {
-                            new ConditionExpression("crda6_produit", ConditionOperator.Equal, productId)
-                        }
-                    }
-                };
-
-                query.Orders.Add(new OrderExpression("createdon", OrderType.Descending));
-
-                var result = _serviceClient.RetrieveMultiple(query);
-                foreach (var entity in result.Entities)
-                {
-                    var note = entity.GetAttributeValue<int?>("crda6_note");
-                    if (note.HasValue && (note.Value < 0 || note.Value > 10)) note = null;
-
-                    avisList.Add(new Avis
-                    {
-                        Id = entity.Id,
-                        Title = entity.GetAttributeValue<string>("crda6_name") ?? string.Empty,
-                        Description = entity.GetAttributeValue<string>("crda6_description") ?? string.Empty,
-                        Note = note,
-                        CreatedOn = entity.GetAttributeValue<DateTime?>("createdon"),
-                        CreatedByName = entity.Contains("crda6_client") ? entity.GetAttributeValue<EntityReference>("crda6_client")?.Name : null
-                    });
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Erreur lors de la récupération des avis : " + ex.Message);
-            }
-
-            return avisList;
-        }
-
-        public (Guid? AvisId, string ErrorMessage) CreateAvis(
-            Guid contactId,
-            Guid productId,
-            string title,
-            string description,
-            int note)
-        {
-            if (!IsConnected) return (null, "Connexion Dataverse indisponible.");
-            if (contactId == Guid.Empty) return (null, "Contact invalide.");
-            if (productId == Guid.Empty) return (null, "Produit invalide.");
-
-            title = (title ?? string.Empty).Trim();
-            description = (description ?? string.Empty).Trim();
-
-            if (string.IsNullOrWhiteSpace(title)) return (null, "Le titre est obligatoire.");
-            if (note < 0 || note > 10) return (null, "La note doit être un entier entre 0 et 10.");
-
-            try
-            {
-                var avis = new Entity("crda6_avis")
-                {
-                    ["crda6_name"] = title,
-                    ["crda6_description"] = string.IsNullOrWhiteSpace(description) ? null : description,
-                    ["crda6_note"] = note,
-                    ["crda6_produit"] = new EntityReference("product", productId),
-                    ["crda6_client"] = new EntityReference("contact", contactId)
-                };
-
-                var avisId = _serviceClient.Create(avis);
-                if (avisId == Guid.Empty)
-                {
-                    return (null, "Erreur lors de la création de l'avis.");
-                }
-
-                return (avisId, null);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Erreur lors de la création de l'avis : " + ex.Message);
-                return (null, "Erreur lors de la création de l'avis.");
-            }
-        }
-
-        public void Dispose()
-        {
-            _serviceClient?.Dispose();
-            GC.SuppressFinalize(this);
-        }
-
-        public class SiteWebContent
-        {
-            // News / Actualités
-            public string NewsBadgeFr { get; set; }
-            public string NewsBadgeEn { get; set; }
-            public string NewsHeroTitleFr { get; set; }
-            public string NewsHeroTitleEn { get; set; }
-            public string NewsHeroSubtitleFr { get; set; }
-            public string NewsHeroSubtitleEn { get; set; }
-            public string NewsHeroImageUrl { get; set; }
-
-            public string NewsArticle1TitleFr { get; set; }
-            public string NewsArticle1TitleEn { get; set; }
-            public string NewsArticle1TextFr { get; set; }
-            public string NewsArticle1TextEn { get; set; }
-            public string NewsArticle1ReadTimeFr { get; set; }
-            public string NewsArticle1ReadTimeEn { get; set; }
-            public string NewsArticle1Date { get; set; }
-            public string NewsArticle1ImageUrl { get; set; }
-
-            public string NewsArticle2TitleFr { get; set; }
-            public string NewsArticle2TitleEn { get; set; }
-            public string NewsArticle2TextFr { get; set; }
-            public string NewsArticle2TextEn { get; set; }
-            public string NewsArticle2ImageUrl { get; set; }
-
-            // More / En savoir plus
-            public string MoreBadgeFr { get; set; }
-            public string MoreBadgeEn { get; set; }
-            public string MoreHeroTitleFr { get; set; }
-            public string MoreHeroTitleEn { get; set; }
-            public string MoreHeroSubtitleFr { get; set; }
-            public string MoreHeroSubtitleEn { get; set; }
-            public string MoreHeroImageUrl { get; set; }
-
-            public string MoreStoryTitleFr { get; set; }
-            public string MoreStoryTitleEn { get; set; }
-            public string MoreStoryTextFr { get; set; }
-            public string MoreStoryTextEn { get; set; }
-
-            public string MoreValuesTitleFr { get; set; }
-            public string MoreValuesTitleEn { get; set; }
-            public string MoreValuesTextFr { get; set; }
-            public string MoreValuesTextEn { get; set; }
-
-            public string MoreTeamTitleFr { get; set; }
-            public string MoreTeamTitleEn { get; set; }
-            public string MoreTeamTextFr { get; set; }
-            public string MoreTeamTextEn { get; set; }
-
-            public string MoreNextTitleFr { get; set; }
-            public string MoreNextTitleEn { get; set; }
-            public string MoreNextTextFr { get; set; }
-            public string MoreNextTextEn { get; set; }
-        }
-
-        public SiteWebContent GetSiteWebContent()
-        {
-            var content = new SiteWebContent();
-            if (!IsConnected) return content;
-
-            try
-            {
-                var query = new QueryExpression("crda6_siteweb")
-                {
-                    ColumnSet = new ColumnSet(
-                        // News / actualités
-                        "crda6_news_badge_fr",
-                        "crda6_news_badge_en",
-                        "crda6_news_hero_title_fr",
-                        "crda6_news_hero_title_en",
-                        "crda6_news_hero_subtitle_fr",
-                        "crda6_news_hero_subtitle_en",
-                        "crda6_news_hero_imageurl",
-
-                        "crda6_news_article1_title_fr",
-                        "crda6_news_article1_title_en",
-                        "crda6_news_article1_text_fr",
-                        "crda6_news_article1_text_en",
-                        "crda6_news_article1_readtime_fr",
-                        "crda6_news_article1_readtime_en",
-                        "crda6_news_article1_date",
-                        "crda6_news_article1_imageurl",
-
-                        "crda6_news_article2_title_fr",
-                        "crda6_news_article2_title_en",
-                        "crda6_news_article2_text_fr",
-                        "crda6_news_article2_text_en",
-                        "crda6_news_article2_imageurl",
-
-                        // More / en savoir plus
-                        "crda6_more_badge_fr",
-                        "crda6_more_badge_en",
-                        "crda6_more_hero_title_fr",
-                        "crda6_more_hero_title_en",
-                        "crda6_more_hero_subtitle_fr",
-                        "crda6_more_hero_subtitle_en",
-                        "crda6_more_hero_imageurl",
-
-                        "crda6_more_story_title_fr",
-                        "crda6_more_story_title_en",
-                        "crda6_more_story_text_fr",
-                        "crda6_more_story_text_en",
-
-                        "crda6_more_values_title_fr",
-                        "crda6_more_values_title_en",
-                        "crda6_more_values_text_fr",
-                        "crda6_more_values_text_en",
-
-                        "crda6_more_team_title_fr",
-                        "crda6_more_team_title_en",
-                        "crda6_more_team_text_fr",
-                        "crda6_more_team_text_en",
-
-                        "crda6_more_next_title_fr",
-                        "crda6_more_next_title_en",
-                        "crda6_more_next_text_fr",
-                        "crda6_more_next_text_en"
-                    ),
-                    TopCount = 1
-                };
-
-                var result = _serviceClient.RetrieveMultiple(query);
-                var entity = result.Entities.FirstOrDefault();
-                if (entity == null)
-                {
-                    Console.WriteLine("[GetSiteWebContent] Aucun enregistrement trouvé dans crda6_siteweb.");
-                    return content;
-                }
-
-                Console.WriteLine($"[GetSiteWebContent] Enregistrement trouvé (ID: {entity.Id})");
-
-                content.NewsBadgeFr = entity.GetAttributeValue<string>("crda6_news_badge_fr");
-                content.NewsBadgeEn = entity.GetAttributeValue<string>("crda6_news_badge_en");
-                content.NewsHeroTitleFr = entity.GetAttributeValue<string>("crda6_news_hero_title_fr");
-                content.NewsHeroTitleEn = entity.GetAttributeValue<string>("crda6_news_hero_title_en");
-                content.NewsHeroSubtitleFr = entity.GetAttributeValue<string>("crda6_news_hero_subtitle_fr");
-                content.NewsHeroSubtitleEn = entity.GetAttributeValue<string>("crda6_news_hero_subtitle_en");
-                content.NewsHeroImageUrl = entity.GetAttributeValue<string>("crda6_news_hero_imageurl");
-
-                content.NewsArticle1TitleFr = entity.GetAttributeValue<string>("crda6_news_article1_title_fr");
-                content.NewsArticle1TitleEn = entity.GetAttributeValue<string>("crda6_news_article1_title_en");
-                content.NewsArticle1TextFr = entity.GetAttributeValue<string>("crda6_news_article1_text_fr");
-                content.NewsArticle1TextEn = entity.GetAttributeValue<string>("crda6_news_article1_text_en");
-                content.NewsArticle1ReadTimeFr = entity.GetAttributeValue<string>("crda6_news_article1_readtime_fr");
-                content.NewsArticle1ReadTimeEn = entity.GetAttributeValue<string>("crda6_news_article1_readtime_en");
-                content.NewsArticle1Date = entity.GetAttributeValue<string>("crda6_news_article1_date");
-                content.NewsArticle1ImageUrl = entity.GetAttributeValue<string>("crda6_news_article1_imageurl");
-
-                content.NewsArticle2TitleFr = entity.GetAttributeValue<string>("crda6_news_article2_title_fr");
-                content.NewsArticle2TitleEn = entity.GetAttributeValue<string>("crda6_news_article2_title_en");
-                content.NewsArticle2TextFr = entity.GetAttributeValue<string>("crda6_news_article2_text_fr");
-                content.NewsArticle2TextEn = entity.GetAttributeValue<string>("crda6_news_article2_text_en");
-                content.NewsArticle2ImageUrl = entity.GetAttributeValue<string>("crda6_news_article2_imageurl");
-
-                content.MoreBadgeFr = entity.GetAttributeValue<string>("crda6_more_badge_fr");
-                content.MoreBadgeEn = entity.GetAttributeValue<string>("crda6_more_badge_en");
-                content.MoreHeroTitleFr = entity.GetAttributeValue<string>("crda6_more_hero_title_fr");
-                content.MoreHeroTitleEn = entity.GetAttributeValue<string>("crda6_more_hero_title_en");
-                content.MoreHeroSubtitleFr = entity.GetAttributeValue<string>("crda6_more_hero_subtitle_fr");
-                content.MoreHeroSubtitleEn = entity.GetAttributeValue<string>("crda6_more_hero_subtitle_en");
-                content.MoreHeroImageUrl = entity.GetAttributeValue<string>("crda6_more_hero_imageurl");
-
-                content.MoreStoryTitleFr = entity.GetAttributeValue<string>("crda6_more_story_title_fr");
-                content.MoreStoryTitleEn = entity.GetAttributeValue<string>("crda6_more_story_title_en");
-                content.MoreStoryTextFr = entity.GetAttributeValue<string>("crda6_more_story_text_fr");
-                content.MoreStoryTextEn = entity.GetAttributeValue<string>("crda6_more_story_text_en");
-
-                content.MoreValuesTitleFr = entity.GetAttributeValue<string>("crda6_more_values_title_fr");
-                content.MoreValuesTitleEn = entity.GetAttributeValue<string>("crda6_more_values_title_en");
-                content.MoreValuesTextFr = entity.GetAttributeValue<string>("crda6_more_values_text_fr");
-                content.MoreValuesTextEn = entity.GetAttributeValue<string>("crda6_more_values_text_en");
-
-                content.MoreTeamTitleFr = entity.GetAttributeValue<string>("crda6_more_team_title_fr");
-                content.MoreTeamTitleEn = entity.GetAttributeValue<string>("crda6_more_team_title_en");
-                content.MoreTeamTextFr = entity.GetAttributeValue<string>("crda6_more_team_text_fr");
-                content.MoreTeamTextEn = entity.GetAttributeValue<string>("crda6_more_team_text_en");
-
-                content.MoreNextTitleFr = entity.GetAttributeValue<string>("crda6_more_next_title_fr");
-                content.MoreNextTitleEn = entity.GetAttributeValue<string>("crda6_more_next_title_en");
-                content.MoreNextTextFr = entity.GetAttributeValue<string>("crda6_more_next_text_fr");
-                content.MoreNextTextEn = entity.GetAttributeValue<string>("crda6_more_next_text_en");
-
-                // Log quelques valeurs pour débugger
-                Console.WriteLine($"[GetSiteWebContent] NewsBadgeFr = '{content.NewsBadgeFr}'");
-                Console.WriteLine($"[GetSiteWebContent] NewsHeroTitleFr = '{content.NewsHeroTitleFr}'");
-                Console.WriteLine($"[GetSiteWebContent] MoreBadgeFr = '{content.MoreBadgeFr}'");
-                Console.WriteLine($"[GetSiteWebContent] MoreHeroTitleFr = '{content.MoreHeroTitleFr}'");
-
-                return content;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Erreur lors de la récupération du contenu du site web : " + ex.Message);
-                return content;
-            }
-        }
-
-        public class Product
-        {
-            public Guid Id { get; set; }
-            public string Name { get; set; }
-            public string ProductNumber { get; set; }
-            public string Category { get; set; }
-            public string ImageUrl { get; set; }
-            public bool IsNew { get; set; }
-            public bool IsFeatured { get; set; }
-            public decimal? PriceEur { get; set; }
-            public decimal? PriceChf { get; set; }
-        }
-
-        public class Contact
-        {
-            public Guid Id { get; set; }
-            public string FullName { get; set; }
-            public string Identifiant { get; set; }
-        }
-
-        public class SalesOrder
-        {
-            public string Name { get; set; }
-            public string OrderNumber { get; set; }
-            public string CustomerId { get; set; }
-            public string PriceLevelId { get; set; }
-            public string StateCode { get; set; }
-            public int? StatusCode { get; set; }
-            public decimal TotalAmount { get; set; }
-            public DateTime CreatedOn { get; set; }
-        }
-
-        public class Quote
-        {
-            public string Name { get; set; }
-            public string QuoteNumber { get; set; }
-            public string CustomerId { get; set; }
-            public string PriceLevelId { get; set; }
-            public string StateCode { get; set; }
-            public int? StatusCode { get; set; }
-            public decimal TotalAmount { get; set; }
-            public DateTime CreatedOn { get; set; }
-        }
-
-        public class CurrencyOption
-        {
-            public Guid Id { get; set; }
-            public string Name { get; set; }
-            public string IsoCode { get; set; }
-        }
-
-        public class Opportunity
-        {
-            public Guid Id { get; set; }
-            public string Name { get; set; }
-            public string StateCode { get; set; }
-            public int? StatusCode { get; set; }
-            public DateTime CreatedOn { get; set; }
-            public decimal EstimatedValue { get; set; }
         }
 
         public bool HasUserReviewedProduct(Guid contactId, Guid productId)
@@ -1399,6 +1797,75 @@ namespace SAE_Dynamics_RGF.Data
             }
         }
 
+        private string GetMimeType(string fileName)
+        {
+            var extension = System.IO.Path.GetExtension(fileName).ToLowerInvariant();
+            return extension switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".gif" => "image/gif",
+                ".bmp" => "image/bmp",
+                ".webp" => "image/webp",
+                _ => "application/octet-stream"
+            };
+        }
+
+        public class SalesOrder
+        {
+            public Guid Id { get; set; }
+            public string Name { get; set; }
+            public string OrderNumber { get; set; }
+            public string InvoiceNumber { get; set; }
+            public string QuoteNumber { get; set; }
+            public string CustomerId { get; set; }
+            public string PriceLevelId { get; set; }
+            public string StateCode { get; set; }
+            public int? StatusCode { get; set; }
+            public decimal TotalAmount { get; set; }
+            public DateTime CreatedOn { get; set; }
+            public List<SalesOrderLine> Lines { get; set; } = new();
+            public string ProductName { get; set; }
+            public string ProductNumber { get; set; }
+            public Guid ProductId { get; set; }
+        }
+
+        public class SalesOrderLine
+        {
+            public Guid ProductId { get; set; }
+            public string ProductName { get; set; }
+            public decimal Quantity { get; set; }
+        }
+
+        public class SavRequest
+        {
+            public Guid Id { get; set; }
+            public string Name { get; set; }
+            public string ProductName { get; set; }
+            public string ProductNumber { get; set; }
+            public DateTime? PurchaseDate { get; set; }
+            public string Description { get; set; }
+            public DateTime? CreatedOn { get; set; }
+            public Guid ProductId { get; set; }
+        }
+
+        public class CurrencyOption
+        {
+            public Guid Id { get; set; }
+            public string Name { get; set; }
+            public string IsoCode { get; set; }
+        }
+
+        public class Opportunity
+        {
+            public Guid Id { get; set; }
+            public string Name { get; set; }
+            public string StateCode { get; set; }
+            public int? StatusCode { get; set; }
+            public DateTime CreatedOn { get; set; }
+            public decimal EstimatedValue { get; set; }
+        }
+
         public class Avis
         {
             public Guid Id { get; set; }
@@ -1407,6 +1874,95 @@ namespace SAE_Dynamics_RGF.Data
             public int? Note { get; set; }
             public DateTime? CreatedOn { get; set; }
             public string CreatedByName { get; set; }
+        }
+
+        public class Product
+        {
+            public Guid Id { get; set; }
+            public string Name { get; set; }
+            public string ProductNumber { get; set; }
+            public string Category { get; set; }
+            public string ImageUrl { get; set; }
+            public bool IsNew { get; set; }
+            public bool IsFeatured { get; set; }
+            public decimal? PriceEur { get; set; }
+            public decimal? PriceChf { get; set; }
+        }
+
+        public class Quote
+        {
+            public string Name { get; set; }
+            public string QuoteNumber { get; set; }
+            public decimal TotalAmount { get; set; }
+            public string CustomerId { get; set; }
+            public string PriceLevelId { get; set; }
+            public string StateCode { get; set; }
+            public int? StatusCode { get; set; }
+            public DateTime CreatedOn { get; set; }
+            public string ProductName { get; set; }
+            public string ProductNumber { get; set; }
+            public Guid ProductId { get; set; }
+        }
+
+        public class SiteWebContent
+        {
+            public string Title { get; set; }
+            public string Content { get; set; }
+            public DateTime? CreatedOn { get; set; }
+
+            // More page properties
+            public string MoreBadgeFr { get; set; }
+            public string MoreBadgeEn { get; set; }
+            public string MoreHeroTitleFr { get; set; }
+            public string MoreHeroTitleEn { get; set; }
+            public string MoreHeroSubtitleFr { get; set; }
+            public string MoreHeroSubtitleEn { get; set; }
+            public string MoreHeroImageUrl { get; set; }
+            public string MoreStoryTitleFr { get; set; }
+            public string MoreStoryTitleEn { get; set; }
+            public string MoreStoryTextFr { get; set; }
+            public string MoreStoryTextEn { get; set; }
+            public string MoreValuesTitleFr { get; set; }
+            public string MoreValuesTitleEn { get; set; }
+            public string MoreValuesTextFr { get; set; }
+            public string MoreValuesTextEn { get; set; }
+            public string MoreTeamTitleFr { get; set; }
+            public string MoreTeamTitleEn { get; set; }
+            public string MoreTeamTextFr { get; set; }
+            public string MoreTeamTextEn { get; set; }
+            public string MoreNextTitleFr { get; set; }
+            public string MoreNextTitleEn { get; set; }
+            public string MoreNextTextFr { get; set; }
+            public string MoreNextTextEn { get; set; }
+
+            // News page properties
+            public string NewsBadgeFr { get; set; }
+            public string NewsBadgeEn { get; set; }
+            public string NewsHeroTitleFr { get; set; }
+            public string NewsHeroTitleEn { get; set; }
+            public string NewsHeroSubtitleFr { get; set; }
+            public string NewsHeroSubtitleEn { get; set; }
+            public string NewsHeroImageUrl { get; set; }
+            public string NewsArticle1ImageUrl { get; set; }
+            public string NewsArticle1TitleFr { get; set; }
+            public string NewsArticle1TitleEn { get; set; }
+            public string NewsArticle1TextFr { get; set; }
+            public string NewsArticle1TextEn { get; set; }
+            public string NewsArticle1Date { get; set; }
+            public string NewsArticle1ReadTimeFr { get; set; }
+            public string NewsArticle1ReadTimeEn { get; set; }
+            public string NewsArticle2ImageUrl { get; set; }
+            public string NewsArticle2TitleFr { get; set; }
+            public string NewsArticle2TitleEn { get; set; }
+            public string NewsArticle2TextFr { get; set; }
+            public string NewsArticle2TextEn { get; set; }
+        }
+
+        public class Contact
+        {
+            public Guid Id { get; set; }
+            public string FullName { get; set; }
+            public string Identifiant { get; set; }
         }
     }
 }
