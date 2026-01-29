@@ -5,20 +5,12 @@
 }
 
 <div data-rolix-scope>
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div class="d-flex align-items-center gap-2">
-            <a asp-page="/Profile" asp-route-tab="orders" class="btn btn-outline-secondary btn-sm">
-                <i class="fas fa-arrow-left me-1"></i>
-                <span data-lang-fr="Retour au profil" data-lang-en="Back to profile">Retour au profil</span>
-            </a>
-            <h2 class="mb-0" data-lang-fr="Mes commandes" data-lang-en="My orders">@ViewData["Title"]</h2>
-        </div>
-        <div>
-            <button class="btn btn-primary" data-lang-fr="Nouvelle commande" data-lang-en="New order">
-                <i class="fas fa-plus me-2"></i>
-                <span data-lang-fr="Nouvelle commande" data-lang-en="New order">Nouvelle commande</span>
-            </button>
-        </div>
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <a asp-page="/Profile" asp-route-tab="orders" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i>
+            <span data-lang-fr="Retour au profil" data-lang-en="Back to profile">Retour au profil</span>
+        </a>
+        <h2 class="mb-0" data-lang-fr="Mes commandes" data-lang-en="My orders">@ViewData["Title"]</h2>
     </div>
 
     @if (!Model.HasOrders)
@@ -53,20 +45,14 @@
                     <div class="col-md-3">
                         <select class="form-select" data-rolix-filter-for="rolix-orders-table">
                             <option value="all" data-lang-fr="Tous les statuts" data-lang-en="All statuses">Tous les statuts</option>
-                            <option value="active" data-lang-fr="Actif" data-lang-en="Active">Actif</option>
-                            <option value="sent" data-lang-fr="Envoyée" data-lang-en="Sent">Envoyée</option>
-                            <option value="cancelled" data-lang-fr="Annulée" data-lang-en="Cancelled">Annulée</option>
-                            <option value="executed" data-lang-fr="Exécutée" data-lang-en="Executed">Exécutée</option>
-                            <option value="invoiced" data-lang-fr="Facturée" data-lang-en="Invoiced">Facturée</option>
+                            @foreach (var option in Model.StateCodeOptions)
+                            {
+                                <option value="@option.Key">@option.Value</option>
+                            }
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <div class="d-flex align-items-center justify-content-end">
-                            <button class="btn btn-outline-secondary" type="button">
-                                <i class="fas fa-filter"></i>
-                                <span class="d-none d-md-inline ms-1" data-lang-fr="Filtres" data-lang-en="Filters">Filtres</span>
-                            </button>
-                        </div>
+                        <!-- Filtres supprimés -->
                     </div>
                 </div>
             </div>
@@ -88,40 +74,34 @@
                             @foreach (var order in Model.SalesOrders)
                             {
                                 var statusKey = "pending";
-                                var statusText = order.StateCode;
+                                var statusText = order.StateCode?.ToString() ?? "N/A";
                                 var badgeKey = "pending";
 
                                 switch (order.StatusCode)
                                 {
                                     case 0: // Actif
-                                        statusKey = "active";
+                                        statusKey = "0";
                                         badgeKey = "active";
-                                        statusText = "Actif";
                                         break;
                                     case 1: // Envoyée
-                                        statusKey = "sent";
+                                        statusKey = "1";
                                         badgeKey = "active";
-                                        statusText = "Envoyée";
                                         break;
                                     case 2: // Annulé(e)
-                                        statusKey = "cancelled";
+                                        statusKey = "2";
                                         badgeKey = "cancelled";
-                                        statusText = "Annulée";
                                         break;
                                     case 3: // Exécuté(e)
-                                        statusKey = "executed";
+                                        statusKey = "3";
                                         badgeKey = "completed";
-                                        statusText = "Exécutée";
                                         break;
                                     case 4: // Facturé
-                                        statusKey = "invoiced";
+                                        statusKey = "4";
                                         badgeKey = "completed";
-                                        statusText = "Facturée";
                                         break;
                                     default:
                                         statusKey = "pending";
                                         badgeKey = "pending";
-                                        statusText = "En attente";
                                         break;
                                 }
                                 <tr data-status="@statusKey">

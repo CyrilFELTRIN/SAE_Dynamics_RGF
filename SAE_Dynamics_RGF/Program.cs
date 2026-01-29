@@ -6,6 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 // 🔧 Services
 // ---------------------
 builder.Services.AddRazorPages();
+builder.Services.AddControllers(); // Ajouter le support des contrôleurs API
 
 // ✅ Gestion des sessions
 builder.Services.AddSession(options =>
@@ -24,24 +25,26 @@ builder.Services.AddSingleton<DataverseService>();
 var app = builder.Build();
 
 // ---------------------
-// 🌐 Test de connexion Dataverse au démarrage
+// 🌐 Test de connexion Dataverse au démarrage (version asynchrone)
 // ---------------------
 using (var scope = app.Services.CreateScope())
 {
     var dataverseService = scope.ServiceProvider.GetRequiredService<DataverseService>();
-    try
+    
+    // Lancer la vérification en arrière-plan pour ne pas bloquer le démarrage
+    _ = Task.Run(async () =>
     {
-        var products = dataverseService.GetProducts();
-        Console.WriteLine($"✅ Produits récupérés : {products.Count}");
-        foreach (var p in products)
+        try
         {
-            Console.WriteLine($"Nom : {p.Name}, Catégorie : {p.Category}");
+            await Task.Delay(1000); // Attendre que l'application soit démarrée
+            var products = dataverseService.GetProducts();
+            Console.WriteLine($"✅ Produits récupérés : {products.Count}");
         }
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine("❌ Erreur lors de la récupération des produits : " + ex.Message);
-    }
+        catch (Exception ex)
+        {
+            Console.WriteLine("❌ Erreur lors de la récupération des produits : " + ex.Message);
+        }
+    });
 }
 
 // ---------------------
@@ -67,5 +70,6 @@ app.UseAuthorization();
 
 // ✅ Routes Razor Pages
 app.MapRazorPages();
+app.MapControllers(); // Ajouter le routage des contrôleurs API
 
 app.Run();

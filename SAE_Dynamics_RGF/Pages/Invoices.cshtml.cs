@@ -12,6 +12,7 @@ namespace SAE_Dynamics_RGF.Pages
         private readonly DataverseService _dataverseService;
 
         public List<SalesOrder> Invoices { get; set; } = new();
+        public Dictionary<string, string> StateCodeOptions { get; set; } = new();
 
         public InvoicesModel(DataverseService dataverseService)
         {
@@ -25,6 +26,9 @@ namespace SAE_Dynamics_RGF.Pages
                 Guid.TryParse(HttpContext.Session.GetString("ContactId"), out var contactId))
             {
                 Invoices = _dataverseService.GetInvoicesForContact(contactId);
+                
+                // Récupérer dynamiquement les options du champ statecode
+                StateCodeOptions = _dataverseService.GetStateCodeOptions("invoice");
             }
         }
     }

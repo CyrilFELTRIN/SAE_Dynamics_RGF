@@ -281,6 +281,7 @@
                                             <th data-lang-fr="Produit" data-lang-en="Product">Produit</th>
                                             <th data-lang-fr="Date" data-lang-en="Date">Date</th>
                                             <th class="text-end" data-lang-fr="Montant" data-lang-en="Amount">Montant</th>
+                                            <th data-lang-fr="Statut" data-lang-en="Status">Statut</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -291,6 +292,7 @@
                                                 <td><a asp-page="/ProductDetail" asp-route-ProductNumber="@inv.ProductNumber" class="text-decoration-none fw-semibold">@inv.ProductName</a></td>
                                                 <td>@inv.CreatedOn.ToString("dd/MM/yyyy")</td>
                                                 <td class="text-end fw-semibold">@inv.TotalAmount.ToString("N2") €</td>
+                                                <td>@(inv.StateCode?.ToString() ?? "N/A")</td>
                                             </tr>
                                         }
                                     </tbody>

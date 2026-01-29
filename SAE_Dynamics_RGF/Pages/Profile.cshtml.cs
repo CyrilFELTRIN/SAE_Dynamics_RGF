@@ -101,27 +101,12 @@ namespace SAE_Dynamics_RGF.Pages
 
         public string GetQuoteStatusText(Quote quote)
         {
-            return quote?.StatusCode switch
-            {
-                0 => "Brouillon",
-                1 => "Actif",
-                2 => "Conclu",
-                3 => "Fermé",
-                _ => "En attente"
-            };
+            return quote?.StateCode?.ToString() ?? "N/A";
         }
 
         public string GetOrderStatusText(SalesOrder order)
         {
-            return order?.StatusCode switch
-            {
-                0 => "Actif",
-                1 => "Envoyée",
-                2 => "Annulée",
-                3 => "Exécutée",
-                4 => "Facturée",
-                _ => "En attente"
-            };
+            return order?.StateCode?.ToString() ?? "N/A";
         }
     }
 }

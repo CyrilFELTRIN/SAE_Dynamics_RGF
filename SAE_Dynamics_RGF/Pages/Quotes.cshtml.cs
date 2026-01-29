@@ -12,6 +12,7 @@ namespace SAE_Dynamics_RGF.Pages
         private readonly DataverseService _dataverseService;
 
         public List<Quote> Quotes { get; set; } = new();
+        public Dictionary<string, string> StateCodeOptions { get; set; } = new();
 
         public QuotesModel(DataverseService dataverseService)
         {
@@ -34,6 +35,9 @@ namespace SAE_Dynamics_RGF.Pages
             }
 
             Quotes = _dataverseService.GetQuotesForContact(contactId);
+            
+            // Récupérer dynamiquement les options du champ statecode
+            StateCodeOptions = _dataverseService.GetStateCodeOptions("quote");
         }
     }
 }

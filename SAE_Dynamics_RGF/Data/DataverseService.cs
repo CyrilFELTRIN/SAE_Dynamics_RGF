@@ -1,5 +1,7 @@
 ﻿using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Messages;
+using Microsoft.Xrm.Sdk.Metadata;
 using Microsoft.Xrm.Sdk.Query;
 using Microsoft.Crm.Sdk.Messages;
 using System;
@@ -160,6 +162,47 @@ namespace SAE_Dynamics_RGF.Data
                 Console.WriteLine("Erreur lors de l'inscription du contact : " + ex.Message);
                 return (null, ex.Message);
             }
+        }
+
+        public Dictionary<string, string> GetStateCodeOptions(string entityName)
+        {
+            var options = new Dictionary<string, string>();
+            if (!IsConnected) return options;
+
+            try
+            {
+                // Récupérer les métadonnées du champ statecode pour l'entité
+                var attributeRequest = new RetrieveAttributeRequest
+                {
+                    EntityLogicalName = entityName,
+                    LogicalName = "statecode",
+                    RetrieveAsIfPublished = true
+                };
+
+                var attributeResponse = (RetrieveAttributeResponse)_serviceClient.Execute(attributeRequest);
+                var stateAttribute = (StateAttributeMetadata)attributeResponse.AttributeMetadata;
+
+                // Parcourir les options de statut
+                foreach (var option in stateAttribute.OptionSet.Options)
+                {
+                    var optionMetadata = option as OptionMetadata;
+                    if (optionMetadata != null)
+                    {
+                        options.Add(optionMetadata.Value.ToString(), optionMetadata.Label?.UserLocalizedLabel?.Label ?? $"Status {optionMetadata.Value}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur lors de la récupération des options statecode pour {entityName}: {ex.Message}");
+            }
+
+            return options;
+        }
+
+        public byte[] GetProductImageBytes(Guid productId)
+        {
+            return GetFullImageBytes("product", productId, "crda6_image");
         }
 
         private byte[] GetFullImageBytes(string entityName, Guid recordId, string attributeName)
@@ -349,12 +392,8 @@ namespace SAE_Dynamics_RGF.Data
 
                     if (entity.Contains("crda6_image"))
                     {
-                        var imageBytes = GetFullImageBytes("product", entity.Id, "crda6_image");
-                        if (imageBytes != null && imageBytes.Length > 0)
-                        {
-                            string base64Image = Convert.ToBase64String(imageBytes);
-                            product.ImageUrl = $"data:image/png;base64,{base64Image}";
-                        }
+                        // Utiliser une URL d'image au lieu du base64 pour de meilleures performances
+                        product.ImageUrl = $"/api/product/image/{entity.Id}";
                     }
 
                     products.Add(product);
@@ -412,12 +451,8 @@ namespace SAE_Dynamics_RGF.Data
 
                     if (entity.Contains("crda6_image"))
                     {
-                        var imageBytes = GetFullImageBytes("product", entity.Id, "crda6_image");
-                        if (imageBytes != null && imageBytes.Length > 0)
-                        {
-                            string base64Image = Convert.ToBase64String(imageBytes);
-                            product.ImageUrl = $"data:image/png;base64,{base64Image}";
-                        }
+                        // Utiliser une URL d'image au lieu du base64 pour de meilleures performances
+                        product.ImageUrl = $"/api/product/image/{entity.Id}";
                     }
 
                     products.Add(product);
@@ -472,12 +507,8 @@ namespace SAE_Dynamics_RGF.Data
 
                     if (entity.Contains("crda6_image"))
                     {
-                        var imageBytes = GetFullImageBytes("product", entity.Id, "crda6_image");
-                        if (imageBytes != null && imageBytes.Length > 0)
-                        {
-                            string base64Image = Convert.ToBase64String(imageBytes);
-                            product.ImageUrl = $"data:image/png;base64,{base64Image}";
-                        }
+                        // Utiliser une URL d'image au lieu du base64 pour de meilleures performances
+                        product.ImageUrl = $"/api/product/image/{entity.Id}";
                     }
 
                     parents.Add(product);
@@ -532,12 +563,8 @@ namespace SAE_Dynamics_RGF.Data
 
                     if (entity.Contains("crda6_image"))
                     {
-                        var imageBytes = GetFullImageBytes("product", entity.Id, "crda6_image");
-                        if (imageBytes != null && imageBytes.Length > 0)
-                        {
-                            string base64Image = Convert.ToBase64String(imageBytes);
-                            product.ImageUrl = $"data:image/png;base64,{base64Image}";
-                        }
+                        // Utiliser une URL d'image au lieu du base64 pour de meilleures performances
+                        product.ImageUrl = $"/api/product/image/{entity.Id}";
                     }
 
                     products.Add(product);
@@ -1269,33 +1296,33 @@ namespace SAE_Dynamics_RGF.Data
                 var query = new QueryExpression("crda6_siteweb")
                 {
                     ColumnSet = new ColumnSet(
-                        "crda6_title", "crda6_content", "createdon",
+                        //"crda6_title", "crda6_content", "createdon",
                         // More page fields
-                        "crda6_morebadgefr", "crda6_morebadgeen",
-                        "crda6_moreherotitlefr", "crda6_moreherotitleen",
-                        "crda6_moreherosubtitlefr", "crda6_moreherosubtitleen",
-                        "crda6_moreheroimageurl",
-                        "crda6_morestorytitlefr", "crda6_morestorytitleen",
-                        "crda6_morestorytextfr", "crda6_morestorytexten",
-                        "crda6_morevaluestitlefr", "crda6_morevaluestitleen",
-                        "crda6_morevaluestextfr", "crda6_morevaluestexten",
-                        "crda6_moreteamtitlefr", "crda6_moreteamtitleen",
-                        "crda6_moreteamtextfr", "crda6_moreteamtexten",
-                        "crda6_morenexttitlefr", "crda6_morenexttitleen",
-                        "crda6_morenexttextfr", "crda6_morenexttexten",
+                        "crda6_more_badge_fr", "crda6_more_badge_en",
+                        "crda6_more_hero_title_fr", "crda6_more_hero_title_en",
+                        "crda6_more_hero_subtitle_fr", "crda6_more_hero_subtitle_en",
+                        "crda6_more_hero_image",
+                        "crda6_more_story_title_fr", "crda6_more_story_title_en",
+                        "crda6_more_story_text_fr", "crda6_more_story_text_en",
+                        "crda6_more_values_title_fr", "crda6_more_values_title_en",
+                        "crda6_more_values_text_fr", "crda6_more_values_text_en",
+                        "crda6_more_team_title_fr", "crda6_more_team_title_en",
+                        "crda6_more_team_text_fr", "crda6_more_team_text_en",
+                        "crda6_more_next_title_fr", "crda6_more_next_title_en",
+                        "crda6_more_next_text_fr", "crda6_more_next_text_en",
                         // News page fields
-                        "crda6_newsbadgefr", "crda6_newsbadgeen",
-                        "crda6_newsherotitlefr", "crda6_newsherotitleen",
-                        "crda6_newsherosubtitlefr", "crda6_newsherosubtitleen",
-                        "crda6_newsheroimageurl",
-                        "crda6_newsarticle1imageurl",
-                        "crda6_newsarticle1titlefr", "crda6_newsarticle1titleen",
-                        "crda6_newsarticle1textfr", "crda6_newsarticle1texten",
-                        "crda6_newsarticle1date",
-                        "crda6_newsarticle1readtimefr", "crda6_newsarticle1readtimeen",
-                        "crda6_newsarticle2imageurl",
-                        "crda6_newsarticle2titlefr", "crda6_newsarticle2titleen",
-                        "crda6_newsarticle2textfr", "crda6_newsarticle2texten"
+                        "crda6_news_badge_fr", "crda6_news_badge_en",
+                        "crda6_news_hero_title_fr", "crda6_news_hero_title_en",
+                        "crda6_news_hero_subtitle_fr", "crda6_news_hero_subtitle_en",
+                        "crda6_news_hero_image",
+                        "crda6_news_article1_image",
+                        "crda6_news_article1_title_fr", "crda6_news_article1_title_en",
+                        "crda6_news_article1_text_fr", "crda6_news_article1_text_en",
+                        "crda6_news_article1_date",
+                        "crda6_news_article1_readtime_fr", "crda6_news_article1_readtime_en",
+                        "crda6_news_article2_image",
+                        "crda6_news_article2_title_fr", "crda6_news_article2_title_en",
+                        "crda6_news_article2_text_fr", "crda6_news_article2_text_en"
                     ),
                     TopCount = 1
                 };
@@ -1311,51 +1338,51 @@ namespace SAE_Dynamics_RGF.Data
                         CreatedOn = entity.GetAttributeValue<DateTime?>("createdon"),
 
                         // More page properties
-                        MoreBadgeFr = entity.GetAttributeValue<string>("crda6_morebadgefr") ?? "À propos",
-                        MoreBadgeEn = entity.GetAttributeValue<string>("crda6_morebadgeen") ?? "About",
-                        MoreHeroTitleFr = entity.GetAttributeValue<string>("crda6_moreherotitlefr") ?? "Découvrez notre histoire",
-                        MoreHeroTitleEn = entity.GetAttributeValue<string>("crda6_moreherotitleen") ?? "Discover our story",
-                        MoreHeroSubtitleFr = entity.GetAttributeValue<string>("crda6_moreherosubtitlefr") ?? "Plus de 10 ans d'expertise à votre service",
-                        MoreHeroSubtitleEn = entity.GetAttributeValue<string>("crda6_moreherosubtitleen") ?? "Over 10 years of expertise at your service",
-                        MoreHeroImageUrl = entity.GetAttributeValue<string>("crda6_moreheroimageurl"),
-                        MoreStoryTitleFr = entity.GetAttributeValue<string>("crda6_morestorytitlefr") ?? "Notre histoire",
-                        MoreStoryTitleEn = entity.GetAttributeValue<string>("crda6_morestorytitleen") ?? "Our story",
-                        MoreStoryTextFr = entity.GetAttributeValue<string>("crda6_morestorytextfr") ?? "Depuis notre création, nous nous engageons à fournir les meilleures solutions.",
-                        MoreStoryTextEn = entity.GetAttributeValue<string>("crda6_morestorytexten") ?? "Since our creation, we have been committed to providing the best solutions.",
-                        MoreValuesTitleFr = entity.GetAttributeValue<string>("crda6_morevaluestitlefr") ?? "Nos valeurs",
-                        MoreValuesTitleEn = entity.GetAttributeValue<string>("crda6_morevaluestitleen") ?? "Our values",
-                        MoreValuesTextFr = entity.GetAttributeValue<string>("crda6_morevaluestextfr") ?? "Innovation, qualité et satisfaction client sont nos piliers.",
-                        MoreValuesTextEn = entity.GetAttributeValue<string>("crda6_morevaluestexten") ?? "Innovation, quality and customer satisfaction are our pillars.",
-                        MoreTeamTitleFr = entity.GetAttributeValue<string>("crda6_moreteamtitlefr") ?? "Notre équipe",
-                        MoreTeamTitleEn = entity.GetAttributeValue<string>("crda6_moreteamtitleen") ?? "Our team",
-                        MoreTeamTextFr = entity.GetAttributeValue<string>("crda6_moreteamtextfr") ?? "Des experts passionnés à votre écoute.",
-                        MoreTeamTextEn = entity.GetAttributeValue<string>("crda6_moreteamtexten") ?? "Passionate experts listening to you.",
-                        MoreNextTitleFr = entity.GetAttributeValue<string>("crda6_morenexttitlefr") ?? "Prochaines étapes",
-                        MoreNextTitleEn = entity.GetAttributeValue<string>("crda6_morenexttitleen") ?? "Next steps",
-                        MoreNextTextFr = entity.GetAttributeValue<string>("crda6_morenexttextfr") ?? "Contactez-nous pour discuter de vos projets.",
-                        MoreNextTextEn = entity.GetAttributeValue<string>("crda6_morenexttexten") ?? "Contact us to discuss your projects.",
+                        MoreBadgeFr = entity.GetAttributeValue<string>("crda6_more_badge_fr") ?? "À propos",
+                        MoreBadgeEn = entity.GetAttributeValue<string>("crda6_more_badge_en") ?? "About",
+                        MoreHeroTitleFr = entity.GetAttributeValue<string>("crda6_more_hero_title_fr") ?? "Découvrez notre histoire",
+                        MoreHeroTitleEn = entity.GetAttributeValue<string>("crda6_more_hero_title_en") ?? "Discover our story",
+                        MoreHeroSubtitleFr = entity.GetAttributeValue<string>("crda6_more_hero_subtitle_fr") ?? "Plus de 10 ans d'expertise à votre service",
+                        MoreHeroSubtitleEn = entity.GetAttributeValue<string>("crda6_more_hero_subtitle_en") ?? "Over 10 years of expertise at your service",
+                        MoreHeroImageUrl = entity.GetAttributeValue<string>("crda6_more_hero_image"),
+                        MoreStoryTitleFr = entity.GetAttributeValue<string>("crda6_more_story_title_fr") ?? "Notre histoire",
+                        MoreStoryTitleEn = entity.GetAttributeValue<string>("crda6_more_story_title_en") ?? "Our story",
+                        MoreStoryTextFr = entity.GetAttributeValue<string>("crda6_more_story_text_fr") ?? "Depuis notre création, nous nous engageons à fournir les meilleures solutions.",
+                        MoreStoryTextEn = entity.GetAttributeValue<string>("crda6_more_story_text_en") ?? "Since our creation, we have been committed to providing the best solutions.",
+                        MoreValuesTitleFr = entity.GetAttributeValue<string>("crda6_more_values_title_fr") ?? "Nos valeurs",
+                        MoreValuesTitleEn = entity.GetAttributeValue<string>("crda6_more_values_title_en") ?? "Our values",
+                        MoreValuesTextFr = entity.GetAttributeValue<string>("crda6_more_values_text_fr") ?? "Innovation, qualité et satisfaction client sont nos piliers.",
+                        MoreValuesTextEn = entity.GetAttributeValue<string>("crda6_more_values_text_en") ?? "Innovation, quality and customer satisfaction are our pillars.",
+                        MoreTeamTitleFr = entity.GetAttributeValue<string>("crda6_more_team_title_fr") ?? "Notre équipe",
+                        MoreTeamTitleEn = entity.GetAttributeValue<string>("crda6_more_team_title_en") ?? "Our team",
+                        MoreTeamTextFr = entity.GetAttributeValue<string>("crda6_more_team_text_fr") ?? "Des experts passionnés à votre écoute.",
+                        MoreTeamTextEn = entity.GetAttributeValue<string>("crda6_more_team_text_en") ?? "Passionate experts listening to you.",
+                        MoreNextTitleFr = entity.GetAttributeValue<string>("crda6_more_next_title_fr") ?? "Prochaines étapes",
+                        MoreNextTitleEn = entity.GetAttributeValue<string>("crda6_more_next_title_en") ?? "Next steps",
+                        MoreNextTextFr = entity.GetAttributeValue<string>("crda6_more_next_text_fr") ?? "Contactez-nous pour discuter de vos projets.",
+                        MoreNextTextEn = entity.GetAttributeValue<string>("crda6_more_next_text_en") ?? "Contact us to discuss your projects.",
 
                         // News page properties
-                        NewsBadgeFr = entity.GetAttributeValue<string>("crda6_newsbadgefr") ?? "Actualités",
-                        NewsBadgeEn = entity.GetAttributeValue<string>("crda6_newsbadgeen") ?? "News",
-                        NewsHeroTitleFr = entity.GetAttributeValue<string>("crda6_newsherotitlefr") ?? "Dernières actualités",
-                        NewsHeroTitleEn = entity.GetAttributeValue<string>("crda6_newsherotitleen") ?? "Latest news",
-                        NewsHeroSubtitleFr = entity.GetAttributeValue<string>("crda6_newsherosubtitlefr") ?? "Restez informé de nos dernières nouveautés",
-                        NewsHeroSubtitleEn = entity.GetAttributeValue<string>("crda6_newsherosubtitleen") ?? "Stay informed about our latest news",
-                        NewsHeroImageUrl = entity.GetAttributeValue<string>("crda6_newsheroimageurl"),
-                        NewsArticle1ImageUrl = entity.GetAttributeValue<string>("crda6_newsarticle1imageurl"),
-                        NewsArticle1TitleFr = entity.GetAttributeValue<string>("crda6_newsarticle1titlefr") ?? "Nouveau lancement",
-                        NewsArticle1TitleEn = entity.GetAttributeValue<string>("crda6_newsarticle1titleen") ?? "New launch",
-                        NewsArticle1TextFr = entity.GetAttributeValue<string>("crda6_newsarticle1textfr") ?? "Découvrez nos dernières innovations.",
-                        NewsArticle1TextEn = entity.GetAttributeValue<string>("crda6_newsarticle1texten") ?? "Discover our latest innovations.",
-                        NewsArticle1Date = entity.GetAttributeValue<string>("crda6_newsarticle1date") ?? DateTime.Now.ToString("dd MMMM yyyy"),
-                        NewsArticle1ReadTimeFr = entity.GetAttributeValue<string>("crda6_newsarticle1readtimefr") ?? "5 min de lecture",
-                        NewsArticle1ReadTimeEn = entity.GetAttributeValue<string>("crda6_newsarticle1readtimeen") ?? "5 min read",
-                        NewsArticle2ImageUrl = entity.GetAttributeValue<string>("crda6_newsarticle2imageurl"),
-                        NewsArticle2TitleFr = entity.GetAttributeValue<string>("crda6_newsarticle2titlefr") ?? "Événement à venir",
-                        NewsArticle2TitleEn = entity.GetAttributeValue<string>("crda6_newsarticle2titleen") ?? "Upcoming event",
-                        NewsArticle2TextFr = entity.GetAttributeValue<string>("crda6_newsarticle2textfr") ?? "Rejoignez-nous pour notre prochain événement.",
-                        NewsArticle2TextEn = entity.GetAttributeValue<string>("crda6_newsarticle2texten") ?? "Join us for our next event."
+                        NewsBadgeFr = entity.GetAttributeValue<string>("crda6_news_badge_fr") ?? "Actualités",
+                        NewsBadgeEn = entity.GetAttributeValue<string>("crda6_news_badge_en") ?? "News",
+                        NewsHeroTitleFr = entity.GetAttributeValue<string>("crda6_news_hero_title_fr") ?? "Dernières actualités",
+                        NewsHeroTitleEn = entity.GetAttributeValue<string>("crda6_news_hero_title_en") ?? "Latest news",
+                        NewsHeroSubtitleFr = entity.GetAttributeValue<string>("crda6_news_hero_subtitle_fr") ?? "Restez informé de nos dernières nouveautés",
+                        NewsHeroSubtitleEn = entity.GetAttributeValue<string>("crda6_news_hero_subtitle_en") ?? "Stay informed about our latest news",
+                        NewsHeroImageUrl = entity.GetAttributeValue<string>("crda6_news_hero_image"),
+                        NewsArticle1ImageUrl = entity.GetAttributeValue<string>("crda6_news_article1_image"),
+                        NewsArticle1TitleFr = entity.GetAttributeValue<string>("crda6_news_article1_title_fr") ?? "Nouveau lancement",
+                        NewsArticle1TitleEn = entity.GetAttributeValue<string>("crda6_news_article1_title_en") ?? "New launch",
+                        NewsArticle1TextFr = entity.GetAttributeValue<string>("crda6_news_article1_text_fr") ?? "Découvrez nos dernières innovations.",
+                        NewsArticle1TextEn = entity.GetAttributeValue<string>("crda6_news_article1_text_en") ?? "Discover our latest innovations.",
+                        NewsArticle1Date = entity.GetAttributeValue<DateTime?>("crda6_news_article1_date")?.ToString("dd MMMM yyyy") ?? DateTime.Now.ToString("dd MMMM yyyy"),
+                        NewsArticle1ReadTimeFr = entity.GetAttributeValue<string>("crda6_news_article1_readtime_fr") ?? "",
+                        NewsArticle1ReadTimeEn = entity.GetAttributeValue<string>("crda6_news_article1_readtime_en") ?? "",
+                        NewsArticle2ImageUrl = entity.GetAttributeValue<string>("crda6_news_article2_image"),
+                        NewsArticle2TitleFr = entity.GetAttributeValue<string>("crda6_news_article2_title_fr") ?? "Événement à venir",
+                        NewsArticle2TitleEn = entity.GetAttributeValue<string>("crda6_news_article2_title_en") ?? "Upcoming event",
+                        NewsArticle2TextFr = entity.GetAttributeValue<string>("crda6_news_article2_text_fr") ?? "Rejoignez-nous pour notre prochain événement.",
+                        NewsArticle2TextEn = entity.GetAttributeValue<string>("crda6_news_article2_text_en") ?? "Join us for our next event."
                     };
                 }
             }
@@ -1406,8 +1433,8 @@ namespace SAE_Dynamics_RGF.Data
                 NewsArticle1TextFr = "Découvrez nos dernières innovations.",
                 NewsArticle1TextEn = "Discover our latest innovations.",
                 NewsArticle1Date = DateTime.Now.ToString("dd MMMM yyyy"),
-                NewsArticle1ReadTimeFr = "5 min de lecture",
-                NewsArticle1ReadTimeEn = "5 min read",
+                NewsArticle1ReadTimeFr = "",
+                NewsArticle1ReadTimeEn = "",
                 NewsArticle2TitleFr = "Événement à venir",
                 NewsArticle2TitleEn = "Upcoming event",
                 NewsArticle2TextFr = "Rejoignez-nous pour notre prochain événement.",
@@ -1711,6 +1738,58 @@ namespace SAE_Dynamics_RGF.Data
                 var opportunityId = _serviceClient.Create(opportunity);
                 if (opportunityId == Guid.Empty) return (null, "Création de l'opportunité impossible.");
 
+                // Ajouter le produit à l'opportunité
+                try
+                {
+                    var defaultUom = GetDefaultUom();
+                    if (defaultUom != null)
+                    {
+                        // Récupérer le prix du produit
+                        var productQuery = new QueryExpression("product")
+                        {
+                            ColumnSet = new ColumnSet("price", "defaultuomid"),
+                            Criteria = new FilterExpression
+                            {
+                                Conditions = { new ConditionExpression("productid", ConditionOperator.Equal, productId) }
+                            }
+                        };
+
+                        var productResult = _serviceClient.RetrieveMultiple(productQuery);
+                        if (productResult.Entities.Count > 0)
+                        {
+                            var productEntity = productResult.Entities[0];
+                            var productPrice = productEntity.GetAttributeValue<Money>("price")?.Value ?? 0m;
+                            var productUomId = productEntity.GetAttributeValue<EntityReference>("defaultuomid")?.Id;
+                            
+                            var opportunityProduct = new Entity("opportunityproduct")
+                            {
+                                ["opportunityid"] = new EntityReference("opportunity", opportunityId),
+                                ["productid"] = new EntityReference("product", productId),
+                                ["uomid"] = new EntityReference("uom", productUomId ?? defaultUom.Id),
+                                ["quantity"] = 1m,
+                                ["priceperunit"] = new Money(productPrice),
+                                ["ispriceoverridden"] = false
+                            };
+                            
+                            _serviceClient.Create(opportunityProduct);
+                            Console.WriteLine($"Produit ajouté à l'opportunité avec succès. Prix: {productPrice}");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Produit non trouvé pour l'ajout à l'opportunité.");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Aucune unité de mesure trouvée pour ajouter le produit à l'opportunité.");
+                    }
+                }
+                catch (Exception productEx)
+                {
+                    Console.WriteLine("Erreur lors de l'ajout du produit à l'opportunité : " + productEx.Message);
+                    // Ne pas échouer si l'ajout du produit échoue
+                }
+
                 return (opportunityId, string.Empty);
             }
             catch (Exception ex)
@@ -1795,6 +1874,31 @@ namespace SAE_Dynamics_RGF.Data
                 Console.WriteLine($"Erreur lors de la vérification de l'existence d'un avis : {ex.Message}");
                 return false;
             }
+        }
+
+        private EntityReference GetDefaultUom()
+        {
+            try
+            {
+                // Récupérer la première unité de mesure disponible
+                var uomQuery = new QueryExpression("uom")
+                {
+                    ColumnSet = new ColumnSet("uomid", "name"),
+                    TopCount = 1
+                };
+
+                var uomResult = _serviceClient.RetrieveMultiple(uomQuery);
+                if (uomResult.Entities.Count > 0)
+                {
+                    return new EntityReference("uom", uomResult.Entities[0].Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erreur lors de la récupération de l'unité de mesure : " + ex.Message);
+            }
+            
+            return null; // Retourner null si aucune unité trouvée
         }
 
         private string GetMimeType(string fileName)

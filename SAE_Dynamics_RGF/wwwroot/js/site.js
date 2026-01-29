@@ -146,12 +146,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function applyFilterAndSearch(rows) {
             const q = (searchInput ? searchInput.value : '').toString().trim().toLowerCase();
-            const f = (filterSelect ? filterSelect.value : 'all').toString();
+            const fValue = (filterSelect ? filterSelect.value : 'all').toString();
+            const selectedOption = filterSelect ? filterSelect.options[filterSelect.selectedIndex] : null;
+            const fLabel = (selectedOption ? selectedOption.textContent : '').toString();
 
             return rows.filter((tr) => {
-                if (f && f !== 'all') {
-                    const status = (tr.getAttribute('data-status') || '').toString().toLowerCase();
-                    if (status !== f.toLowerCase()) return false;
+                if (fValue && fValue !== 'all') {
+                    const statusAttr = (tr.getAttribute('data-status') || '').toString();
+                    const status = statusAttr.toLowerCase();
+                    const fLower = fValue.toLowerCase();
+
+                    // Match either by value (e.g., numeric code) or by label (displayed text badge)
+                    let match = status === fLower;
+                    if (!match) {
+                        const badgeText = (tr.querySelector('.status-badge')?.textContent || '').toString();
+                        match = normalize(badgeText) === normalize(fLabel);
+                    }
+                    if (!match) return false;
                 }
 
                 if (!q) return true;

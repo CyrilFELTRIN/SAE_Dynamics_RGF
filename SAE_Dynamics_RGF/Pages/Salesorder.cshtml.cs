@@ -16,6 +16,7 @@ namespace SAE_Dynamics_RGF.Pages
 
         public List<SalesOrder> SalesOrders { get; set; } = new();
         public bool HasOrders => SalesOrders.Any();
+        public Dictionary<string, string> StateCodeOptions { get; set; } = new();
 
         [BindProperty]
         public Guid SavOrderId { get; set; }
@@ -61,6 +62,9 @@ namespace SAE_Dynamics_RGF.Pages
                     order.Lines = _dataverseService.GetSalesOrderLines(order.Id);
                 }
             }
+
+            // Récupérer dynamiquement les options du champ statecode
+            StateCodeOptions = _dataverseService.GetStateCodeOptions("salesorder");
 
             return Page();
         }
