@@ -1451,7 +1451,7 @@ namespace SAE_Dynamics_RGF.Data
             {
                 var query = new QueryExpression("crda6_avis")
                 {
-                    ColumnSet = new ColumnSet("crda6_name", "crda6_description", "crda6_note", "createdon", "createdby"),
+                    ColumnSet = new ColumnSet("crda6_name", "crda6_description", "crda6_note", "createdon", "crda6_client"),
                     Criteria = new FilterExpression
                     {
                         Conditions =
@@ -1468,7 +1468,26 @@ namespace SAE_Dynamics_RGF.Data
                 var result = _serviceClient.RetrieveMultiple(query);
                 foreach (var entity in result.Entities)
                 {
-                    var createdByRef = entity.GetAttributeValue<EntityReference>("createdby");
+                    var clientRef = entity.GetAttributeValue<EntityReference>("crda6_client");
+                    string clientName = "Anonyme";
+                    
+                    if (clientRef != null)
+                    {
+                        try
+                        {
+                            var contact = _serviceClient.Retrieve("contact", clientRef.Id, new ColumnSet("firstname", "lastname"));
+                            var firstName = contact.GetAttributeValue<string>("firstname") ?? "";
+                            var lastName = contact.GetAttributeValue<string>("lastname") ?? "";
+                            clientName = $"{firstName} {lastName}".Trim();
+                            if (string.IsNullOrWhiteSpace(clientName))
+                                clientName = "Anonyme";
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("Erreur lors de la récupération du nom du contact : " + ex.Message);
+                        }
+                    }
+                    
                     avisList.Add(new Avis
                     {
                         Id = entity.Id,
@@ -1476,7 +1495,7 @@ namespace SAE_Dynamics_RGF.Data
                         Description = entity.GetAttributeValue<string>("crda6_description") ?? "Sans description",
                         Note = entity.GetAttributeValue<int?>("crda6_note"),
                         CreatedOn = entity.GetAttributeValue<DateTime?>("createdon"),
-                        CreatedByName = createdByRef?.Name ?? "Anonyme"
+                        CreatedByName = clientName
                     });
                 }
             }
